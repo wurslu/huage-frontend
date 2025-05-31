@@ -75,6 +75,14 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 	const notes = data?.data?.notes || [];
 	const pagination = data?.data?.pagination;
 
+	const formatViewCount = (count: number): string => {
+		if (count === 0) return "0";
+		if (count < 1000) return count.toString();
+		if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+		if (count < 1000000) return `${Math.floor(count / 1000)}k`;
+		return `${(count / 1000000).toFixed(1)}M`;
+	};
+
 	const handleMenuClick = (
 		event: React.MouseEvent<HTMLElement>,
 		noteId: number
@@ -266,8 +274,12 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 													<Visibility
 														sx={{ fontSize: 14, color: "text.secondary" }}
 													/>
-													<Typography variant="caption" color="text.secondary">
-														{note.view_count}
+													<Typography
+														variant="caption"
+														color="text.secondary"
+														title={`${note.view_count} 次浏览`}
+													>
+														{formatViewCount(note.view_count)}
 													</Typography>
 												</Box>
 											)}

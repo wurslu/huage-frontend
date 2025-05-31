@@ -66,6 +66,14 @@ const NoteDetail: React.FC = () => {
 		});
 	};
 
+	const formatViewCount = (count: number): string => {
+		if (count === 0) return "0";
+		if (count < 1000) return count.toString();
+		if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+		if (count < 1000000) return `${Math.floor(count / 1000)}k`;
+		return `${(count / 1000000).toFixed(1)}M`;
+	};
+
 	const handleBack = () => {
 		navigate(-1);
 	};
@@ -431,8 +439,8 @@ const NoteDetail: React.FC = () => {
 						{note.view_count > 0 && (
 							<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
 								<Visibility sx={{ fontSize: 18 }} />
-								<Typography variant="body2">
-									{note.view_count} 次浏览
+								<Typography variant="body2" title={`${note.view_count} 次浏览`}>
+									{formatViewCount(note.view_count)} 次浏览
 								</Typography>
 							</Box>
 						)}

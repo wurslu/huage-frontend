@@ -127,6 +127,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 									selectedCategoryId === category.id
 										? "rgba(255,255,255,0.2)"
 										: "action.hover",
+								color:
+									selectedCategoryId === category.id
+										? "white"
+										: "text.secondary",
 							}}
 						/>
 					</ListItemButton>
@@ -318,6 +322,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 														selectedTagId === tag.id
 															? "rgba(255,255,255,0.2)"
 															: "action.hover",
+													color:
+														selectedTagId === tag.id
+															? "white"
+															: "text.secondary",
 												}}
 											/>
 										</ListItemButton>

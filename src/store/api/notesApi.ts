@@ -24,7 +24,6 @@ export const notesApi = createApi({
 	}),
 	tagTypes: ["Note", "Category", "Tag", "User"],
 	endpoints: (builder) => ({
-		// 认证相关
 		login: builder.mutation<ApiResponse<AuthResponse>, LoginRequest>({
 			query: (credentials) => ({
 				url: "/auth/login",
@@ -44,7 +43,6 @@ export const notesApi = createApi({
 			providesTags: ["User"],
 		}),
 
-		// 笔记相关
 		getNotes: builder.query<
 			ApiResponse<PaginatedResponse<Note>>,
 			NotesListRequest
@@ -60,7 +58,6 @@ export const notesApi = createApi({
 			providesTags: ["Note"],
 		}),
 
-		// 获取用户统计数据
 		getUserStats: builder.query<
 			ApiResponse<{
 				total_notes: number;
@@ -76,7 +73,6 @@ export const notesApi = createApi({
 			providesTags: ["Note", "Category", "Tag"],
 		}),
 
-		// 获取单个笔记的接口
 		getNoteById: builder.query<ApiResponse<Note>, number>({
 			query: (id) => `/notes/${id}`,
 			providesTags: (result, error, id) => [{ type: "Note", id }],
@@ -88,7 +84,7 @@ export const notesApi = createApi({
 				method: "POST",
 				body: noteData,
 			}),
-			invalidatesTags: ["Note"],
+			invalidatesTags: ["Note", "Category", "Tag"],
 		}),
 
 		updateNote: builder.mutation<
@@ -103,6 +99,8 @@ export const notesApi = createApi({
 			invalidatesTags: (result, error, { id }) => [
 				{ type: "Note", id },
 				"Note",
+				"Category",
+				"Tag",
 			],
 		}),
 
@@ -111,10 +109,9 @@ export const notesApi = createApi({
 				url: `/notes/${id}`,
 				method: "DELETE",
 			}),
-			invalidatesTags: ["Note"],
+			invalidatesTags: ["Note", "Category", "Tag"],
 		}),
 
-		// 分享相关
 		createShareLink: builder.mutation<
 			ApiResponse<{
 				share_code: string;
@@ -135,7 +132,6 @@ export const notesApi = createApi({
 			}),
 		}),
 
-		// 分类相关
 		getCategories: builder.query<ApiResponse<Category[]>, void>({
 			query: () => "/categories",
 			providesTags: ["Category"],
@@ -147,7 +143,7 @@ export const notesApi = createApi({
 				method: "POST",
 				body: categoryData,
 			}),
-			invalidatesTags: ["Category"],
+			invalidatesTags: ["Category", "Note"],
 		}),
 
 		updateCategory: builder.mutation<
@@ -170,7 +166,6 @@ export const notesApi = createApi({
 			invalidatesTags: ["Category"],
 		}),
 
-		// 标签相关
 		getTags: builder.query<ApiResponse<Tag[]>, void>({
 			query: () => "/tags",
 			providesTags: ["Tag"],
@@ -182,7 +177,7 @@ export const notesApi = createApi({
 				method: "POST",
 				body: tagData,
 			}),
-			invalidatesTags: ["Tag"],
+			invalidatesTags: ["Tag", "Note"],
 		}),
 
 		updateTag: builder.mutation<
