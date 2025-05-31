@@ -59,28 +59,30 @@ const CategoryDialog: React.FC<CategoryDialogProps> = ({
 	const isEditing = Boolean(categoryId);
 	const isLoading = isCreating || isUpdating;
 
-	// TODO: 如果是编辑模式，需要加载现有分类数据
+	// 修复 useEffect - 移除 categories 依赖，避免无限更新
 	useEffect(() => {
-		if (isEditing && categoryId) {
-			// 这里应该获取分类详情并填充表单
-			// const category = categories.find(c => c.id === categoryId);
-			// if (category) {
-			//   setFormData({
-			//     name: category.name,
-			//     parent_id: category.parent_id || undefined,
-			//     description: category.description || "",
-			//   });
-			// }
-		} else {
-			// 新建模式，重置表单
-			setFormData({
-				name: "",
-				parent_id: undefined,
-				description: "",
-			});
+		if (open) {
+			if (isEditing && categoryId) {
+				// 编辑模式：寻找当前分类数据并填充表单
+				const currentCategory = categories.find((cat) => cat.id === categoryId);
+				if (currentCategory) {
+					setFormData({
+						name: currentCategory.name,
+						parent_id: currentCategory.parent_id || undefined,
+						description: currentCategory.description || "",
+					});
+				}
+			} else {
+				// 新建模式：重置表单
+				setFormData({
+					name: "",
+					parent_id: undefined,
+					description: "",
+				});
+			}
+			setErrors({});
 		}
-		setErrors({});
-	}, [isEditing, categoryId, open, categories]);
+	}, [open, isEditing, categoryId]);
 
 	const handleInputChange = (
 		field: keyof CategoryFormData,
