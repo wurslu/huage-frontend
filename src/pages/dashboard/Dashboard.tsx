@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import {
-	Grid,
+	Box,
 	Card,
 	CardContent,
 	Typography,
-	Box,
 	TextField,
 	InputAdornment,
 	Fab,
@@ -20,17 +19,33 @@ import {
 } from "@mui/icons-material";
 import { useAppSelector, useAppDispatch } from "../../store/hook";
 import { setSearchQuery } from "../../store/slices/notesSlice";
+import {
+	useGetCategoriesQuery,
+	useGetTagsQuery,
+} from "../../store/api/notesApi";
+import NotesList from "../../components/NotesList";
+import NoteEditor from "../../components/NoteEditor";
 
 const Dashboard: React.FC = () => {
 	const { searchQuery } = useAppSelector((state) => state.notes);
 	const { user, storage } = useAppSelector((state) => state.auth);
 	const dispatch = useAppDispatch();
 
+	const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+	const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+
+	// 获取分类和标签数据
+	const { data: categoriesData } = useGetCategoriesQuery();
+	const { data: tagsData } = useGetTagsQuery();
+
+	const categories = categoriesData?.data || [];
+	const tags = tagsData?.data || [];
+
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		dispatch(setSearchQuery(event.target.value));
 	};
 
-	// 临时数据
+	// 计算统计数据
 	const stats = [
 		{
 			label: "全部笔记",
@@ -38,10 +53,40 @@ const Dashboard: React.FC = () => {
 			icon: Description,
 			color: "#667eea",
 		},
-		{ label: "分类数量", value: 2, icon: Folder, color: "#27ae60" },
-		{ label: "标签数量", value: 3, icon: Label, color: "#f39c12" },
-		{ label: "公开笔记", value: 1, icon: Public, color: "#e74c3c" },
+		{
+			label: "分类数量",
+			value: categories.length,
+			icon: Folder,
+			color: "#27ae60",
+		},
+		{
+			label: "标签数量",
+			value: tags.length,
+			icon: Label,
+			color: "#f39c12",
+		},
+		{
+			label: "公开笔记",
+			value: 0, // TODO: 需要后端提供公开笔记数量
+			icon: Public,
+			color: "#e74c3c",
+		},
 	];
+
+	const handleCreateNote = () => {
+		setEditingNoteId(null);
+		setIsNoteEditorOpen(true);
+	};
+
+	const handleEditNote = (noteId: number) => {
+		setEditingNoteId(noteId);
+		setIsNoteEditorOpen(true);
+	};
+
+	const handleCloseNoteEditor = () => {
+		setIsNoteEditorOpen(false);
+		setEditingNoteId(null);
+	};
 
 	return (
 		<Box>
@@ -83,73 +128,86 @@ const Dashboard: React.FC = () => {
 			</Paper>
 
 			{/* 统计卡片 */}
-			<Grid container spacing={3} sx={{ mb: 4 }}>
-				{stats.map((stat, index) => (
-					<Grid item xs={12} sm={6} md={3} key={index}>
-						<Card
-							sx={{
-								height: "100%",
-								transition: "transform 0.2s ease-in-out",
-								"&:hover": {
-									transform: "translateY(-4px)",
-								},
-							}}
-						>
-							<CardContent>
-								<Box
-									sx={{
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "space-between",
-									}}
-								>
-									<Box>
-										<Typography
-											color="text.secondary"
-											gutterBottom
-											variant="body2"
-										>
-											{stat.label}
-										</Typography>
-										<Typography
-											variant="h4"
-											component="div"
-											sx={{ fontWeight: "bold" }}
-										>
-											{stat.value}
-										</Typography>
-									</Box>
+			<Box sx={{ mb: 4 }}>
+				<Box
+					sx={{
+						display: "grid",
+						gridTemplateColumns: {
+							xs: "1fr",
+							sm: "repeat(2, 1fr)",
+							md: "repeat(4, 1fr)",
+						},
+						gap: 3,
+					}}
+				>
+					{stats.map((stat, index) => (
+						<Box key={index}>
+							<Card
+								sx={{
+									height: "100%",
+									transition: "transform 0.2s ease-in-out",
+									"&:hover": {
+										transform: "translateY(-4px)",
+									},
+								}}
+							>
+								<CardContent>
 									<Box
 										sx={{
-											backgroundColor: stat.color,
-											borderRadius: 2,
-											p: 1.5,
 											display: "flex",
 											alignItems: "center",
-											justifyContent: "center",
+											justifyContent: "space-between",
 										}}
 									>
-										<stat.icon sx={{ color: "white", fontSize: 24 }} />
+										<Box>
+											<Typography
+												color="text.secondary"
+												gutterBottom
+												variant="body2"
+											>
+												{stat.label}
+											</Typography>
+											<Typography
+												variant="h4"
+												component="div"
+												sx={{ fontWeight: "bold" }}
+											>
+												{stat.value}
+											</Typography>
+										</Box>
+										<Box
+											sx={{
+												backgroundColor: stat.color,
+												borderRadius: 2,
+												p: 1.5,
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+											}}
+										>
+											<stat.icon sx={{ color: "white", fontSize: 24 }} />
+										</Box>
 									</Box>
-								</Box>
-							</CardContent>
-						</Card>
-					</Grid>
-				))}
-			</Grid>
+								</CardContent>
+							</Card>
+						</Box>
+					))}
+				</Box>
+			</Box>
 
-			{/* 笔记列表占位符 */}
-			<Paper sx={{ p: 4, textAlign: "center" }}>
-				<Typography variant="h6" gutterBottom>
-					📝 笔记列表
+			{/* 笔记列表 */}
+			<Paper sx={{ p: 3 }}>
+				<Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+					📝 我的笔记
 				</Typography>
-				<Typography color="text.secondary">笔记列表功能即将推出...</Typography>
+				<NotesList onEditNote={handleEditNote} />
 			</Paper>
 
 			{/* 添加笔记按钮 */}
 			<Fab
 				color="primary"
 				aria-label="add note"
+				onClick={handleCreateNote}
 				sx={{
 					position: "fixed",
 					bottom: 24,
@@ -159,6 +217,13 @@ const Dashboard: React.FC = () => {
 			>
 				<Add />
 			</Fab>
+
+			{/* 笔记编辑器 */}
+			<NoteEditor
+				open={isNoteEditorOpen}
+				onClose={handleCloseNoteEditor}
+				noteId={editingNoteId}
+			/>
 		</Box>
 	);
 };

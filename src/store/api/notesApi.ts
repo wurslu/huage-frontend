@@ -60,6 +60,35 @@ export const notesApi = createApi({
 			providesTags: ["Note"],
 		}),
 
+		createNote: builder.mutation<ApiResponse<Note>, Partial<Note>>({
+			query: (noteData) => ({
+				url: "/notes",
+				method: "POST",
+				body: noteData,
+			}),
+			invalidatesTags: ["Note"],
+		}),
+
+		updateNote: builder.mutation<
+			ApiResponse<Note>,
+			{ id: number } & Partial<Note>
+		>({
+			query: ({ id, ...noteData }) => ({
+				url: `/notes/${id}`,
+				method: "PUT",
+				body: noteData,
+			}),
+			invalidatesTags: ["Note"],
+		}),
+
+		deleteNote: builder.mutation<ApiResponse<void>, number>({
+			query: (id) => ({
+				url: `/notes/${id}`,
+				method: "DELETE",
+			}),
+			invalidatesTags: ["Note"],
+		}),
+
 		// 分类相关
 		getCategories: builder.query<ApiResponse<Category[]>, void>({
 			query: () => "/categories",
@@ -79,6 +108,9 @@ export const {
 	useRegisterMutation,
 	useGetMeQuery,
 	useGetNotesQuery,
+	useCreateNoteMutation,
+	useUpdateNoteMutation,
+	useDeleteNoteMutation,
 	useGetCategoriesQuery,
 	useGetTagsQuery,
 } = notesApi;

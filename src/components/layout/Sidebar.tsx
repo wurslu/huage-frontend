@@ -12,19 +12,15 @@ import {
 	Chip,
 	IconButton,
 	Collapse,
-	Badge,
 } from "@mui/material";
 import {
 	Description,
 	Folder,
-	Label,
 	Add,
-	Public,
-	Lock,
 	ExpandLess,
 	ExpandMore,
 } from "@mui/icons-material";
-import { useAppSelector, useAppDispatch } from "../../store/hooks";
+import { useAppSelector, useAppDispatch } from "../../store/hook";
 import {
 	setSelectedCategory,
 	setSelectedTag,
