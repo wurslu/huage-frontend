@@ -21,8 +21,8 @@ import {
 } from "@mui/icons-material";
 import { useRegisterMutation } from "@/store/api/notesApi";
 import { useAppDispatch } from "../../store/hook";
-import { setCredentials } from "@/store/slices/authSlice";
-import { useNotification } from "@/hooks/useNotification";
+import { setCredentials } from "../../store/slices/authSlice";
+import { useNotification } from "../../hooks/useNotification";
 
 const Register: React.FC = () => {
 	const navigate = useNavigate();

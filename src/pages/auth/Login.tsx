@@ -28,8 +28,6 @@ const Login: React.FC = () => {
 	const dispatch = useAppDispatch();
 	const { showSuccess, showError } = useNotification();
 
-	const [login, { isLoading }] = useLoginMutation();
-
 	const [formData, setFormData] = useState({
 		email: "",
 		password: "",

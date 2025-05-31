@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -10,22 +10,36 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { store } from "./store/store";
 import { theme } from "./theme/theme";
+import { useAppSelector, useAppDispatch } from "./store/hook";
+import { useGetMeQuery } from "./store/api/notesApi";
+import { setUser, setStorage, logout } from "./store/slices/authSlice";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Layout from "./components/layout/Layout";
 import NotificationContainer from "./components/ui/NotificationContainer";
 
-// 临时的仪表板组件
-const Dashboard: React.FC = () => (
-	<div style={{ padding: "20px" }}>
-		<h1>Dashboard 页面（待实现）</h1>
-		<p>登录成功！</p>
-	</div>
-);
-
 const AppContent: React.FC = () => {
-	// 暂时简化，先不加载用户信息
-	const isAuthenticated = !!localStorage.getItem("notes_token");
+	const { isAuthenticated, token } = useAppSelector((state) => state.auth);
+	const dispatch = useAppDispatch();
+
+	const { data: userData, error } = useGetMeQuery(undefined, {
+		skip: !isAuthenticated || !token,
+	});
+
+	useEffect(() => {
+		if (userData?.data) {
+			dispatch(setUser(userData.data));
+			dispatch(setStorage(userData.data.storage));
+		}
+	}, [userData, dispatch]);
+
+	useEffect(() => {
+		if (error && "status" in error && error.status === 401) {
+			dispatch(logout());
+		}
+	}, [error, dispatch]);
 
 	return (
 		<Router>
@@ -45,7 +59,15 @@ const AppContent: React.FC = () => {
 				{/* 需要认证的路由 */}
 				<Route
 					path="/dashboard"
-					element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+					element={
+						isAuthenticated ? (
+							<Layout>
+								<Dashboard />
+							</Layout>
+						) : (
+							<Navigate to="/login" />
+						)
+					}
 				/>
 
 				{/* 默认重定向 */}
