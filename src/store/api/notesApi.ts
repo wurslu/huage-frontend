@@ -60,6 +60,28 @@ export const notesApi = createApi({
 			providesTags: ["Note"],
 		}),
 
+		// 获取用户统计数据
+		getUserStats: builder.query<
+			ApiResponse<{
+				total_notes: number;
+				public_notes: number;
+				private_notes: number;
+				total_categories: number;
+				total_tags: number;
+				total_views: number;
+			}>,
+			void
+		>({
+			query: () => "/notes/stats",
+			providesTags: ["Note", "Category", "Tag"],
+		}),
+
+		// 获取单个笔记的接口
+		getNoteById: builder.query<ApiResponse<Note>, number>({
+			query: (id) => `/notes/${id}`,
+			providesTags: (result, error, id) => [{ type: "Note", id }],
+		}),
+
 		createNote: builder.mutation<ApiResponse<Note>, Partial<Note>>({
 			query: (noteData) => ({
 				url: "/notes",
@@ -78,7 +100,10 @@ export const notesApi = createApi({
 				method: "PUT",
 				body: noteData,
 			}),
-			invalidatesTags: ["Note"],
+			invalidatesTags: (result, error, { id }) => [
+				{ type: "Note", id },
+				"Note",
+			],
 		}),
 
 		deleteNote: builder.mutation<ApiResponse<void>, number>({
@@ -87,6 +112,27 @@ export const notesApi = createApi({
 				method: "DELETE",
 			}),
 			invalidatesTags: ["Note"],
+		}),
+
+		// 分享相关
+		createShareLink: builder.mutation<
+			ApiResponse<{
+				share_code: string;
+				share_url: string;
+				password?: string;
+				expire_time?: string;
+			}>,
+			{
+				noteId: number;
+				password?: string;
+				expire_time?: string;
+			}
+		>({
+			query: ({ noteId, ...shareData }) => ({
+				url: `/notes/${noteId}/share`,
+				method: "POST",
+				body: shareData,
+			}),
 		}),
 
 		// 分类相关
@@ -166,6 +212,8 @@ export const {
 	useRegisterMutation,
 	useGetMeQuery,
 	useGetNotesQuery,
+	useGetUserStatsQuery,
+	useGetNoteByIdQuery,
 	useCreateNoteMutation,
 	useUpdateNoteMutation,
 	useDeleteNoteMutation,
@@ -177,4 +225,5 @@ export const {
 	useCreateTagMutation,
 	useUpdateTagMutation,
 	useDeleteTagMutation,
+	useCreateShareLinkMutation,
 } = notesApi;

@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	Box,
 	Card,
@@ -31,12 +32,14 @@ import { useAppSelector, useAppDispatch } from "../store/hook";
 import { useGetNotesQuery, useDeleteNoteMutation } from "../store/api/notesApi";
 import { setCurrentPage } from "../store/slices/notesSlice";
 import { useNotification } from "../hooks/useNotification";
+import ShareDialog from "./ShareDialog";
 
 interface NotesListProps {
 	onEditNote?: (noteId: number) => void;
 }
 
 const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
+	const navigate = useNavigate();
 	const dispatch = useAppDispatch();
 	const { showSuccess, showError } = useNotification();
 	const { selectedCategoryId, selectedTagId, searchQuery, currentPage } =
@@ -47,6 +50,13 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		null
 	);
 	const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+
+	// 分享相关状态
+	const [shareDialogOpen, setShareDialogOpen] = React.useState(false);
+	const [sharingNote, setSharingNote] = React.useState<{
+		id: number;
+		title: string;
+	} | null>(null);
 
 	const [deleteNote, { isLoading: isDeleting }] = useDeleteNoteMutation();
 
@@ -112,8 +122,13 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 	};
 
 	const handleShare = () => {
-		// TODO: 分享笔记
-		console.log("Share note:", selectedNoteId);
+		if (selectedNoteId) {
+			const note = notes.find((n) => n.id === selectedNoteId);
+			if (note) {
+				setSharingNote({ id: note.id, title: note.title });
+				setShareDialogOpen(true);
+			}
+		}
 		handleMenuClose();
 	};
 
@@ -141,15 +156,25 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		dispatch(setCurrentPage(value));
 	};
 
+	// 处理笔记卡片点击 - 跳转到详情页面
 	const handleNoteClick = (noteId: number) => {
-		// TODO: 打开笔记详情页面或模态框
-		console.log("Open note:", noteId);
+		navigate(`/notes/${noteId}`);
 	};
 
 	if (error) {
 		return (
 			<Box sx={{ textAlign: "center", py: 4 }}>
 				<Typography color="error">加载笔记失败</Typography>
+				{/* 分享对话框 */}
+				<ShareDialog
+					open={shareDialogOpen}
+					onClose={() => {
+						setShareDialogOpen(false);
+						setSharingNote(null);
+					}}
+					noteId={sharingNote?.id || null}
+					noteTitle={sharingNote?.title}
+				/>
 			</Box>
 		);
 	}

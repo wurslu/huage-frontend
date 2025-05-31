@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
 	Box,
 	Card,
@@ -20,9 +21,7 @@ import {
 import { useAppSelector, useAppDispatch } from "../../store/hook";
 import { setSearchQuery } from "../../store/slices/notesSlice";
 import {
-	useGetCategoriesQuery,
-	useGetTagsQuery,
-	useGetNotesQuery,
+	useGetUserStatsQuery, // 移除了 useGetNotesQuery
 } from "../../store/api/notesApi";
 import NotesList from "../../components/NotesList";
 import NoteEditor from "../../components/NoteEditor";
@@ -31,51 +30,58 @@ const Dashboard: React.FC = () => {
 	const { searchQuery } = useAppSelector((state) => state.notes);
 	const { user } = useAppSelector((state) => state.auth);
 	const dispatch = useAppDispatch();
+	const [searchParams, setSearchParams] = useSearchParams();
 
 	const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
 	const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
 
-	// 获取分类和标签数据
-	const { data: categoriesData } = useGetCategoriesQuery();
-	const { data: tagsData } = useGetTagsQuery();
+	// 获取用户统计数据
+	const { data: statsData } = useGetUserStatsQuery();
 
-	// 获取所有笔记来计算真实统计数据
-	const { data: allNotesData } = useGetNotesQuery({
-		page: 1,
-		limit: 1, // 只需要获取总数，不需要具体数据
-	});
+	// 提取统计数据（不需要单独的 categories 和 tags 变量，直接使用统计接口的数据）
+	const userStats = statsData?.data;
 
-	const categories = categoriesData?.data || [];
-	const tags = tagsData?.data || [];
-	const totalNotes = allNotesData?.data?.pagination?.total || 0;
+	// 处理 URL 参数中的编辑请求
+	useEffect(() => {
+		const editParam = searchParams.get("edit");
+		if (editParam) {
+			const noteId = parseInt(editParam, 10);
+			if (!isNaN(noteId)) {
+				setEditingNoteId(noteId);
+				setIsNoteEditorOpen(true);
+				// 清除 URL 参数，避免重复打开
+				setSearchParams({});
+			}
+		}
+	}, [searchParams, setSearchParams]);
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		dispatch(setSearchQuery(event.target.value));
 	};
 
-	// 计算统计数据 - 使用真实数据
+	// 计算统计数据 - 使用真实的统计接口数据
 	const stats = [
 		{
 			label: "全部笔记",
-			value: totalNotes,
+			value: userStats?.total_notes || 0,
 			icon: Description,
 			color: "#667eea",
 		},
 		{
 			label: "分类数量",
-			value: categories.length,
+			value: userStats?.total_categories || 0,
 			icon: Folder,
 			color: "#27ae60",
 		},
 		{
 			label: "标签数量",
-			value: tags.length,
+			value: userStats?.total_tags || 0,
 			icon: Label,
 			color: "#f39c12",
 		},
 		{
 			label: "公开笔记",
-			value: 0, // TODO: 需要后端提供公开笔记数量的接口
+			value: userStats?.public_notes || 0,
 			icon: Public,
 			color: "#e74c3c",
 		},
@@ -94,6 +100,10 @@ const Dashboard: React.FC = () => {
 	const handleCloseNoteEditor = () => {
 		setIsNoteEditorOpen(false);
 		setEditingNoteId(null);
+		// 清除可能存在的 URL 参数
+		if (searchParams.has("edit")) {
+			setSearchParams({});
+		}
 	};
 
 	return (

@@ -17,6 +17,7 @@ import { setUser, setStorage, logout } from "./store/slices/authSlice";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/dashboard/Dashboard";
+import NoteDetail from "./pages/notes/NoteDetail";
 import Layout from "./components/layout/Layout";
 import NotificationContainer from "./components/ui/NotificationContainer";
 
@@ -68,6 +69,12 @@ const AppContent: React.FC = () => {
 							<Navigate to="/login" />
 						)
 					}
+				/>
+
+				{/* 笔记详情页面 - 全屏查看 */}
+				<Route
+					path="/notes/:id"
+					element={isAuthenticated ? <NoteDetail /> : <Navigate to="/login" />}
 				/>
 
 				{/* 默认重定向 */}

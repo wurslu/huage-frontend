@@ -26,6 +26,7 @@ import {
 	useUpdateNoteMutation,
 	useGetCategoriesQuery,
 	useGetTagsQuery,
+	useGetNoteByIdQuery,
 } from "../store/api/notesApi";
 import { useNotification } from "../hooks/useNotification";
 
@@ -52,6 +53,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ open, onClose, noteId }) => {
 	const { data: categoriesData } = useGetCategoriesQuery();
 	const { data: tagsData } = useGetTagsQuery();
 
+	// 获取要编辑的笔记数据
+	const { data: noteData } = useGetNoteByIdQuery(noteId || 0, {
+		skip: !noteId,
+	});
+
 	const categories = categoriesData?.data || [];
 	const tags = tagsData?.data || [];
 
@@ -69,34 +75,34 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ open, onClose, noteId }) => {
 	const isEditing = Boolean(noteId);
 	const isLoading = isCreating || isUpdating;
 
-	// TODO: 如果是编辑模式，需要加载现有笔记数据
+	// 当对话框打开或笔记数据变化时，填充表单
 	useEffect(() => {
-		if (isEditing && noteId) {
-			// 这里应该获取笔记详情并填充表单
-			// const { data: noteData } = useGetNoteQuery(noteId);
-			// if (noteData?.data) {
-			//   setFormData({
-			//     title: noteData.data.title,
-			//     content: noteData.data.content,
-			//     content_type: noteData.data.content_type,
-			//     category_id: noteData.data.category_id || undefined,
-			//     tag_ids: noteData.data.tags?.map(tag => tag.id) || [],
-			//     is_public: noteData.data.is_public,
-			//   });
-			// }
-		} else {
-			// 新建模式，重置表单
-			setFormData({
-				title: "",
-				content: "",
-				content_type: "markdown",
-				category_id: undefined,
-				tag_ids: [],
-				is_public: false,
-			});
+		if (open) {
+			if (isEditing && noteData?.data) {
+				// 编辑模式：填充现有数据
+				const note = noteData.data;
+				setFormData({
+					title: note.title,
+					content: note.content,
+					content_type: note.content_type as "markdown" | "html",
+					category_id: note.category_id || undefined,
+					tag_ids: note.tags?.map((tag) => tag.id) || [],
+					is_public: note.is_public,
+				});
+			} else if (!isEditing) {
+				// 新建模式：重置表单
+				setFormData({
+					title: "",
+					content: "",
+					content_type: "markdown",
+					category_id: undefined,
+					tag_ids: [],
+					is_public: false,
+				});
+			}
+			setErrors({});
 		}
-		setErrors({});
-	}, [isEditing, noteId, open]);
+	}, [open, isEditing, noteData]);
 
 	const handleInputChange = (
 		field: keyof NoteFormData,
@@ -137,20 +143,24 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ open, onClose, noteId }) => {
 		}
 
 		try {
-			const noteData = {
+			// 根据后端 API 格式构造请求数据
+			const requestData = {
 				title: formData.title.trim(),
 				content: formData.content.trim(),
 				content_type: formData.content_type,
-				category_id: formData.category_id || undefined,
-				tag_ids: formData.tag_ids,
+				category_id: formData.category_id || undefined, // 使用 undefined 而不是 null
+				tag_ids: formData.tag_ids, // 后端字段名为 tag_ids
 				is_public: formData.is_public,
 			};
 
 			if (isEditing && noteId) {
-				await updateNote({ id: noteId, ...noteData }).unwrap();
+				await updateNote({
+					id: noteId,
+					...requestData,
+				}).unwrap();
 				showSuccess("笔记更新成功！");
 			} else {
-				await createNote(noteData).unwrap();
+				await createNote(requestData).unwrap();
 				showSuccess("笔记创建成功！");
 			}
 
