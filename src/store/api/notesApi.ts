@@ -95,10 +95,68 @@ export const notesApi = createApi({
 			providesTags: ["Category"],
 		}),
 
+		createCategory: builder.mutation<ApiResponse<Category>, Partial<Category>>({
+			query: (categoryData) => ({
+				url: "/categories",
+				method: "POST",
+				body: categoryData,
+			}),
+			invalidatesTags: ["Category"],
+		}),
+
+		updateCategory: builder.mutation<
+			ApiResponse<Category>,
+			{ id: number } & Partial<Category>
+		>({
+			query: ({ id, ...categoryData }) => ({
+				url: `/categories/${id}`,
+				method: "PUT",
+				body: categoryData,
+			}),
+			invalidatesTags: ["Category"],
+		}),
+
+		deleteCategory: builder.mutation<ApiResponse<void>, number>({
+			query: (id) => ({
+				url: `/categories/${id}`,
+				method: "DELETE",
+			}),
+			invalidatesTags: ["Category"],
+		}),
+
 		// 标签相关
 		getTags: builder.query<ApiResponse<Tag[]>, void>({
 			query: () => "/tags",
 			providesTags: ["Tag"],
+		}),
+
+		createTag: builder.mutation<ApiResponse<Tag>, Partial<Tag>>({
+			query: (tagData) => ({
+				url: "/tags",
+				method: "POST",
+				body: tagData,
+			}),
+			invalidatesTags: ["Tag"],
+		}),
+
+		updateTag: builder.mutation<
+			ApiResponse<Tag>,
+			{ id: number } & Partial<Tag>
+		>({
+			query: ({ id, ...tagData }) => ({
+				url: `/tags/${id}`,
+				method: "PUT",
+				body: tagData,
+			}),
+			invalidatesTags: ["Tag"],
+		}),
+
+		deleteTag: builder.mutation<ApiResponse<void>, number>({
+			query: (id) => ({
+				url: `/tags/${id}`,
+				method: "DELETE",
+			}),
+			invalidatesTags: ["Tag"],
 		}),
 	}),
 });
@@ -112,5 +170,11 @@ export const {
 	useUpdateNoteMutation,
 	useDeleteNoteMutation,
 	useGetCategoriesQuery,
+	useCreateCategoryMutation,
+	useUpdateCategoryMutation,
+	useDeleteCategoryMutation,
 	useGetTagsQuery,
+	useCreateTagMutation,
+	useUpdateTagMutation,
+	useDeleteTagMutation,
 } = notesApi;

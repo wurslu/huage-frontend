@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
 	Drawer,
 	List,
@@ -30,6 +30,8 @@ import {
 	useGetCategoriesQuery,
 	useGetTagsQuery,
 } from "../../store/api/notesApi";
+import CategoryDialog from "../CategoryDialog";
+import TagDialog from "../TagDialog";
 
 const DRAWER_WIDTH = 280;
 
@@ -52,6 +54,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 	const [categoriesExpanded, setCategoriesExpanded] = React.useState(true);
 	const [tagsExpanded, setTagsExpanded] = React.useState(true);
 
+	// 对话框状态
+	const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+	const [tagDialogOpen, setTagDialogOpen] = useState(false);
+
 	const handleCategorySelect = (categoryId: number | null) => {
 		if (categoryId === selectedCategoryId) {
 			dispatch(clearFilters());
@@ -70,6 +76,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 
 	const handleAllNotesSelect = () => {
 		dispatch(clearFilters());
+	};
+
+	const handleCreateCategory = () => {
+		setCategoryDialogOpen(true);
+	};
+
+	const handleCreateTag = () => {
+		setTagDialogOpen(true);
 	};
 
 	const renderCategories = (categories: any[], level = 0) => {
@@ -126,181 +140,204 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 	};
 
 	return (
-		<Drawer
-			variant="persistent"
-			anchor="left"
-			open={open}
-			sx={{
-				width: DRAWER_WIDTH,
-				flexShrink: 0,
-				"& .MuiDrawer-paper": {
+		<>
+			<Drawer
+				variant="persistent"
+				anchor="left"
+				open={open}
+				sx={{
 					width: DRAWER_WIDTH,
-					boxSizing: "border-box",
-					mt: "64px",
-					backgroundColor: "background.paper",
-					borderRight: "1px solid",
-					borderColor: "divider",
-				},
-			}}
-		>
-			<Box sx={{ p: 2 }}>
-				{/* 全部笔记 */}
-				<List dense>
-					<ListItem disablePadding>
-						<ListItemButton
-							selected={!selectedCategoryId && !selectedTagId}
-							onClick={handleAllNotesSelect}
-							sx={{
-								borderRadius: 1,
-								"&.Mui-selected": {
-									backgroundColor: "primary.main",
-									color: "white",
-									"&:hover": {
-										backgroundColor: "primary.dark",
+					flexShrink: 0,
+					"& .MuiDrawer-paper": {
+						width: DRAWER_WIDTH,
+						boxSizing: "border-box",
+						mt: "64px",
+						backgroundColor: "background.paper",
+						borderRight: "1px solid",
+						borderColor: "divider",
+					},
+				}}
+			>
+				<Box sx={{ p: 2 }}>
+					{/* 全部笔记 */}
+					<List dense>
+						<ListItem disablePadding>
+							<ListItemButton
+								selected={!selectedCategoryId && !selectedTagId}
+								onClick={handleAllNotesSelect}
+								sx={{
+									borderRadius: 1,
+									"&.Mui-selected": {
+										backgroundColor: "primary.main",
+										color: "white",
+										"&:hover": {
+											backgroundColor: "primary.dark",
+										},
 									},
-								},
+								}}
+							>
+								<ListItemIcon sx={{ minWidth: 36 }}>
+									<Description
+										sx={{
+											color:
+												!selectedCategoryId && !selectedTagId
+													? "white"
+													: "inherit",
+										}}
+									/>
+								</ListItemIcon>
+								<ListItemText
+									primary="📄 全部笔记"
+									primaryTypographyProps={{ fontWeight: 500 }}
+								/>
+							</ListItemButton>
+						</ListItem>
+					</List>
+
+					<Divider sx={{ my: 2 }} />
+
+					{/* 分类部分 */}
+					<Box>
+						<Box
+							sx={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
+								mb: 1,
 							}}
 						>
-							<ListItemIcon sx={{ minWidth: 36 }}>
-								<Description
-									sx={{
-										color:
-											!selectedCategoryId && !selectedTagId
-												? "white"
-												: "inherit",
-									}}
-								/>
-							</ListItemIcon>
-							<ListItemText
-								primary="📄 全部笔记"
-								primaryTypographyProps={{ fontWeight: 500 }}
-							/>
-						</ListItemButton>
-					</ListItem>
-				</List>
-
-				<Divider sx={{ my: 2 }} />
-
-				{/* 分类部分 */}
-				<Box>
-					<Box
-						sx={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-							mb: 1,
-						}}
-					>
-						<Typography
-							variant="subtitle2"
-							color="text.secondary"
-							sx={{ fontWeight: 600 }}
-						>
-							分类
-						</Typography>
-						<Box>
-							<IconButton size="small" color="primary">
-								<Add fontSize="small" />
-							</IconButton>
-							<IconButton
-								size="small"
-								onClick={() => setCategoriesExpanded(!categoriesExpanded)}
+							<Typography
+								variant="subtitle2"
+								color="text.secondary"
+								sx={{ fontWeight: 600 }}
 							>
-								{categoriesExpanded ? <ExpandLess /> : <ExpandMore />}
-							</IconButton>
+								分类
+							</Typography>
+							<Box>
+								<IconButton
+									size="small"
+									color="primary"
+									onClick={handleCreateCategory}
+									title="创建分类"
+								>
+									<Add fontSize="small" />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => setCategoriesExpanded(!categoriesExpanded)}
+									title={categoriesExpanded ? "收起分类" : "展开分类"}
+								>
+									{categoriesExpanded ? <ExpandLess /> : <ExpandMore />}
+								</IconButton>
+							</Box>
 						</Box>
+
+						<Collapse in={categoriesExpanded}>
+							<List dense>{renderCategories(categories)}</List>
+						</Collapse>
 					</Box>
 
-					<Collapse in={categoriesExpanded}>
-						<List dense>{renderCategories(categories)}</List>
-					</Collapse>
-				</Box>
+					<Divider sx={{ my: 2 }} />
 
-				<Divider sx={{ my: 2 }} />
-
-				{/* 标签部分 */}
-				<Box>
-					<Box
-						sx={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "space-between",
-							mb: 1,
-						}}
-					>
-						<Typography
-							variant="subtitle2"
-							color="text.secondary"
-							sx={{ fontWeight: 600 }}
+					{/* 标签部分 */}
+					<Box>
+						<Box
+							sx={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
+								mb: 1,
+							}}
 						>
-							标签
-						</Typography>
-						<Box>
-							<IconButton size="small" color="primary">
-								<Add fontSize="small" />
-							</IconButton>
-							<IconButton
-								size="small"
-								onClick={() => setTagsExpanded(!tagsExpanded)}
+							<Typography
+								variant="subtitle2"
+								color="text.secondary"
+								sx={{ fontWeight: 600 }}
 							>
-								{tagsExpanded ? <ExpandLess /> : <ExpandMore />}
-							</IconButton>
+								标签
+							</Typography>
+							<Box>
+								<IconButton
+									size="small"
+									color="primary"
+									onClick={handleCreateTag}
+									title="创建标签"
+								>
+									<Add fontSize="small" />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => setTagsExpanded(!tagsExpanded)}
+									title={tagsExpanded ? "收起标签" : "展开标签"}
+								>
+									{tagsExpanded ? <ExpandLess /> : <ExpandMore />}
+								</IconButton>
+							</Box>
 						</Box>
-					</Box>
 
-					<Collapse in={tagsExpanded}>
-						<List dense>
-							{tags.map((tag) => (
-								<ListItem key={tag.id} disablePadding>
-									<ListItemButton
-										selected={selectedTagId === tag.id}
-										onClick={() => handleTagSelect(tag.id)}
-										sx={{
-											borderRadius: 1,
-											mx: 1,
-											"&.Mui-selected": {
-												backgroundColor: "primary.main",
-												color: "white",
-												"&:hover": {
-													backgroundColor: "primary.dark",
+						<Collapse in={tagsExpanded}>
+							<List dense>
+								{tags.map((tag) => (
+									<ListItem key={tag.id} disablePadding>
+										<ListItemButton
+											selected={selectedTagId === tag.id}
+											onClick={() => handleTagSelect(tag.id)}
+											sx={{
+												borderRadius: 1,
+												mx: 1,
+												"&.Mui-selected": {
+													backgroundColor: "primary.main",
+													color: "white",
+													"&:hover": {
+														backgroundColor: "primary.dark",
+													},
 												},
-											},
-										}}
-									>
-										<ListItemIcon sx={{ minWidth: 36 }}>
-											<Box
+											}}
+										>
+											<ListItemIcon sx={{ minWidth: 36 }}>
+												<Box
+													sx={{
+														width: 12,
+														height: 12,
+														borderRadius: "50%",
+														backgroundColor: tag.color,
+													}}
+												/>
+											</ListItemIcon>
+											<ListItemText
+												primary={tag.name}
+												primaryTypographyProps={{ fontSize: "0.9rem" }}
+											/>
+											<Chip
+												label={tag.note_count || 0}
+												size="small"
 												sx={{
-													width: 12,
-													height: 12,
-													borderRadius: "50%",
-													backgroundColor: tag.color,
+													height: 20,
+													fontSize: "0.7rem",
+													backgroundColor:
+														selectedTagId === tag.id
+															? "rgba(255,255,255,0.2)"
+															: "action.hover",
 												}}
 											/>
-										</ListItemIcon>
-										<ListItemText
-											primary={tag.name}
-											primaryTypographyProps={{ fontSize: "0.9rem" }}
-										/>
-										<Chip
-											label={tag.note_count || 0}
-											size="small"
-											sx={{
-												height: 20,
-												fontSize: "0.7rem",
-												backgroundColor:
-													selectedTagId === tag.id
-														? "rgba(255,255,255,0.2)"
-														: "action.hover",
-											}}
-										/>
-									</ListItemButton>
-								</ListItem>
-							))}
-						</List>
-					</Collapse>
+										</ListItemButton>
+									</ListItem>
+								))}
+							</List>
+						</Collapse>
+					</Box>
 				</Box>
-			</Box>
-		</Drawer>
+			</Drawer>
+
+			{/* 分类管理对话框 */}
+			<CategoryDialog
+				open={categoryDialogOpen}
+				onClose={() => setCategoryDialogOpen(false)}
+			/>
+
+			{/* 标签管理对话框 */}
+			<TagDialog open={tagDialogOpen} onClose={() => setTagDialogOpen(false)} />
+		</>
 	);
 };
 

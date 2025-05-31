@@ -22,13 +22,14 @@ import { setSearchQuery } from "../../store/slices/notesSlice";
 import {
 	useGetCategoriesQuery,
 	useGetTagsQuery,
+	useGetNotesQuery,
 } from "../../store/api/notesApi";
 import NotesList from "../../components/NotesList";
 import NoteEditor from "../../components/NoteEditor";
 
 const Dashboard: React.FC = () => {
 	const { searchQuery } = useAppSelector((state) => state.notes);
-	const { user, storage } = useAppSelector((state) => state.auth);
+	const { user } = useAppSelector((state) => state.auth);
 	const dispatch = useAppDispatch();
 
 	const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
@@ -38,18 +39,25 @@ const Dashboard: React.FC = () => {
 	const { data: categoriesData } = useGetCategoriesQuery();
 	const { data: tagsData } = useGetTagsQuery();
 
+	// 获取所有笔记来计算真实统计数据
+	const { data: allNotesData } = useGetNotesQuery({
+		page: 1,
+		limit: 1, // 只需要获取总数，不需要具体数据
+	});
+
 	const categories = categoriesData?.data || [];
 	const tags = tagsData?.data || [];
+	const totalNotes = allNotesData?.data?.pagination?.total || 0;
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		dispatch(setSearchQuery(event.target.value));
 	};
 
-	// 计算统计数据
+	// 计算统计数据 - 使用真实数据
 	const stats = [
 		{
 			label: "全部笔记",
-			value: storage?.file_count || 0,
+			value: totalNotes,
 			icon: Description,
 			color: "#667eea",
 		},
@@ -67,7 +75,7 @@ const Dashboard: React.FC = () => {
 		},
 		{
 			label: "公开笔记",
-			value: 0, // TODO: 需要后端提供公开笔记数量
+			value: 0, // TODO: 需要后端提供公开笔记数量的接口
 			icon: Public,
 			color: "#e74c3c",
 		},
