@@ -1,3 +1,5 @@
+import { Attachment } from "@/store/api/notesApi";
+
 export interface Category {
 	id: number;
 	name: string;
@@ -28,7 +30,7 @@ export interface Note {
 	category_id?: number;
 	category?: Category;
 	tags: Tag[];
-	attachments: any[];
+	attachments: Attachment[];
 	created_at: string;
 	updated_at: string;
 }

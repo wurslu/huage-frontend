@@ -27,12 +27,14 @@ import {
 	Delete,
 	Share,
 	Visibility,
+	AttachFile,
 } from "@mui/icons-material";
 import { useAppSelector, useAppDispatch } from "../store/hook";
 import { useGetNotesQuery, useDeleteNoteMutation } from "../store/api/notesApi";
 import { setCurrentPage } from "../store/slices/notesSlice";
 import { useNotification } from "../hooks/useNotification";
 import ShareDialog from "./ShareDialog";
+import AttachmentManager from "./AttachmentManager";
 
 interface NotesListProps {
 	onEditNote?: (noteId: number) => void;
@@ -57,6 +59,14 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		id: number;
 		title: string;
 	} | null>(null);
+
+	// 附件管理相关状态
+	const [attachmentManagerOpen, setAttachmentManagerOpen] =
+		React.useState(false);
+	const [managingNoteId, setManagingNoteId] = React.useState<number | null>(
+		null
+	);
+	const [managingNoteTitle, setManagingNoteTitle] = React.useState<string>("");
 
 	const [deleteNote, { isLoading: isDeleting }] = useDeleteNoteMutation();
 
@@ -171,6 +181,18 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		handleMenuClose();
 	};
 
+	const handleManageAttachments = () => {
+		if (selectedNoteId) {
+			const note = notes.find((n) => n.id === selectedNoteId);
+			if (note) {
+				setManagingNoteId(note.id);
+				setManagingNoteTitle(note.title);
+				setAttachmentManagerOpen(true);
+			}
+		}
+		handleMenuClose();
+	};
+
 	const formatDate = (dateString: string) => {
 		const date = new Date(dateString);
 		const now = new Date();
@@ -273,7 +295,14 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 										>
 											{note.title}
 										</Typography>
-										<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+										<Box
+											sx={{
+												display: "flex",
+												alignItems: "center",
+												gap: 1,
+												flexWrap: "wrap",
+											}}
+										>
 											<Typography variant="caption" color="text.secondary">
 												{formatDate(note.updated_at)}
 											</Typography>
@@ -305,6 +334,27 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 														title={`${note.view_count} 次浏览`}
 													>
 														{formatViewCount(note.view_count)}
+													</Typography>
+												</Box>
+											)}
+											{/* 附件指示器 */}
+											{note.attachments && note.attachments.length > 0 && (
+												<Box
+													sx={{
+														display: "flex",
+														alignItems: "center",
+														gap: 0.5,
+													}}
+												>
+													<AttachFile
+														sx={{ fontSize: 14, color: "text.secondary" }}
+													/>
+													<Typography
+														variant="caption"
+														color="text.secondary"
+														title={`${note.attachments.length} 个附件`}
+													>
+														{note.attachments.length}
 													</Typography>
 												</Box>
 											)}
@@ -424,6 +474,10 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 					<Share sx={{ mr: 1, fontSize: 18 }} />
 					分享
 				</MenuItem>
+				<MenuItem onClick={handleManageAttachments}>
+					<AttachFile sx={{ mr: 1, fontSize: 18 }} />
+					附件管理
+				</MenuItem>
 				<MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
 					<Delete sx={{ mr: 1, fontSize: 18 }} />
 					删除
@@ -501,6 +555,20 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				noteId={sharingNote?.id || null}
 				noteTitle={sharingNote?.title}
 			/>
+
+			{/* 附件管理对话框 */}
+			{managingNoteId && (
+				<AttachmentManager
+					open={attachmentManagerOpen}
+					onClose={() => {
+						setAttachmentManagerOpen(false);
+						setManagingNoteId(null);
+						setManagingNoteTitle("");
+					}}
+					noteId={managingNoteId}
+					noteTitle={managingNoteTitle}
+				/>
+			)}
 		</Box>
 	);
 };

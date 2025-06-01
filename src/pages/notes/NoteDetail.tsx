@@ -27,6 +27,7 @@ import {
 	AccessTime,
 	Category as CategoryIcon,
 	Label as LabelIcon,
+	AttachFile,
 } from "@mui/icons-material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,6 +39,8 @@ import {
 import { useNotification } from "../../hooks/useNotification";
 import ShareDialog from "../../components/ShareDialog";
 import "highlight.js/styles/github.css"; // 代码高亮样式
+import { useGetAttachmentsQuery } from "../../store/api/notesApi";
+import AttachmentList from "../../components/AttatchmentList";
 
 const NoteDetail: React.FC = () => {
 	const { id } = useParams<{ id: string }>();
@@ -52,6 +55,12 @@ const NoteDetail: React.FC = () => {
 	const { data, isLoading, error } = useGetNoteByIdQuery(Number(id) || 0, {
 		skip: !id || isNaN(Number(id)),
 	});
+
+	const { data: attachmentsData } = useGetAttachmentsQuery(Number(id) || 0, {
+		skip: !id || isNaN(Number(id)),
+	});
+
+	const attachments = attachmentsData?.data || [];
 
 	const note = data?.data;
 
@@ -390,6 +399,33 @@ const NoteDetail: React.FC = () => {
 						</Tooltip>
 					</Box>
 				</Box>
+
+				{/* 附件区域 */}
+				{attachments.length > 0 && (
+					<>
+						<Divider sx={{ my: 3 }} />
+						<Box sx={{ mb: 3 }}>
+							<Typography
+								variant="h6"
+								gutterBottom
+								sx={{
+									display: "flex",
+									alignItems: "center",
+									gap: 1,
+									fontWeight: 600,
+								}}
+							>
+								<AttachFile />
+								附件 ({attachments.length})
+							</Typography>
+							<AttachmentList
+								attachments={attachments}
+								viewMode="grid"
+								showActions={false}
+							/>
+						</Box>
+					</>
+				)}
 			</Paper>
 
 			{/* 笔记内容 */}
