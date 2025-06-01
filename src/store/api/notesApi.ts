@@ -209,9 +209,9 @@ export const notesApi = createApi({
 				method: "POST",
 				body: shareData,
 			}),
+			// 修复：创建分享链接后，失效对应笔记的分享信息缓存
 			invalidatesTags: (result, error, { noteId }) => [
 				{ type: "ShareLink", id: noteId },
-				"ShareLink",
 			],
 		}),
 
@@ -235,9 +235,9 @@ export const notesApi = createApi({
 				url: `/notes/${noteId}/share`,
 				method: "DELETE",
 			}),
+			// 修复：删除分享链接后，失效对应笔记的分享信息缓存
 			invalidatesTags: (result, error, noteId) => [
 				{ type: "ShareLink", id: noteId },
-				"ShareLink",
 			],
 		}),
 

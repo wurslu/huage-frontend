@@ -24,7 +24,6 @@ import {
 	Lock,
 	AccessTime,
 	Link as LinkIcon,
-	Refresh,
 } from "@mui/icons-material";
 import {
 	useCreateShareLinkMutation,
@@ -121,7 +120,12 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		try {
 			await deleteShareLink(noteId).unwrap();
 			showSuccess("分享链接删除成功！");
+
+			// 删除成功后，手动触发重新获取数据以清理缓存
 			await refetchShareInfo();
+
+			// 然后关闭对话框
+			onClose();
 		} catch (error: any) {
 			console.error("Delete share link error:", error);
 			const message = error.data?.message || "删除分享链接失败";
@@ -194,12 +198,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 					</Box>
 				)}
 
-				{shareInfoError && (
-					<Alert severity="info" sx={{ mb: 3 }}>
-						当前笔记还没有分享链接，可以创建一个新的分享链接。
-					</Alert>
-				)}
-
+				{/* 如果有现有的分享链接 */}
 				{!isLoadingShareInfo && existingShare && (
 					<Box>
 						<Alert severity="success" sx={{ mb: 3 }}>
@@ -282,104 +281,19 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 							>
 								{isDeleting ? "删除中..." : "删除分享"}
 							</Button>
-							<Button
-								onClick={refetchShareInfo}
-								variant="outlined"
-								startIcon={<Refresh />}
-							>
-								刷新
-							</Button>
 						</Box>
 					</Box>
 				)}
 
-				{!isLoadingShareInfo && !existingShare && !shareInfoError && (
+				{/* 如果没有分享链接或有错误 */}
+				{!isLoadingShareInfo && (!existingShare || shareInfoError) && (
 					<Box>
-						<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-							创建分享链接，让他人可以查看这篇笔记。你可以设置访问密码和过期时间来保护分享内容。
-						</Typography>
+						{shareInfoError && (
+							<Alert severity="info" sx={{ mb: 3 }}>
+								当前笔记还没有分享链接，可以创建一个新的分享链接。
+							</Alert>
+						)}
 
-						<Box sx={{ mb: 3 }}>
-							<FormControlLabel
-								control={
-									<Switch
-										checked={formData.usePassword}
-										onChange={(e) =>
-											setFormData((prev) => ({
-												...prev,
-												usePassword: e.target.checked,
-											}))
-										}
-									/>
-								}
-								label="设置访问密码"
-							/>
-
-							{formData.usePassword && (
-								<TextField
-									fullWidth
-									label="访问密码"
-									type="password"
-									value={formData.password}
-									onChange={(e) =>
-										setFormData((prev) => ({
-											...prev,
-											password: e.target.value,
-										}))
-									}
-									placeholder="请输入访问密码"
-									sx={{ mt: 2 }}
-									helperText="设置密码后，访问者需要输入密码才能查看笔记"
-								/>
-							)}
-						</Box>
-
-						<Divider sx={{ my: 2 }} />
-
-						<Box>
-							<FormControlLabel
-								control={
-									<Switch
-										checked={formData.useExpiration}
-										onChange={(e) =>
-											setFormData((prev) => ({
-												...prev,
-												useExpiration: e.target.checked,
-											}))
-										}
-									/>
-								}
-								label="设置过期时间"
-							/>
-
-							{formData.useExpiration && (
-								<TextField
-									fullWidth
-									label="过期时间"
-									type="datetime-local"
-									value={formData.expireTime}
-									onChange={(e) =>
-										setFormData((prev) => ({
-											...prev,
-											expireTime: e.target.value,
-										}))
-									}
-									sx={{ mt: 2 }}
-									helperText="链接将在指定时间后失效"
-									InputLabelProps={{
-										shrink: true,
-									}}
-									inputProps={{
-										min: new Date().toISOString().slice(0, 16),
-									}}
-								/>
-							)}
-						</Box>
-					</Box>
-				)}
-
-				{!isLoadingShareInfo && shareInfoError && (
-					<Box>
 						<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
 							创建分享链接，让他人可以查看这篇笔记。你可以设置访问密码和过期时间来保护分享内容。
 						</Typography>
