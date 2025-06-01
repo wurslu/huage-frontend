@@ -209,9 +209,10 @@ export const notesApi = createApi({
 				method: "POST",
 				body: shareData,
 			}),
-			// 修复：创建分享链接后，失效对应笔记的分享信息缓存
 			invalidatesTags: (result, error, { noteId }) => [
 				{ type: "ShareLink", id: noteId },
+				{ type: "ShareLink", id: "LIST" },
+				{ type: "Note", id: noteId },
 			],
 		}),
 
@@ -228,6 +229,7 @@ export const notesApi = createApi({
 			providesTags: (result, error, noteId) => [
 				{ type: "ShareLink", id: noteId },
 			],
+			keepUnusedDataFor: 0,
 		}),
 
 		deleteShareLink: builder.mutation<ApiResponse<void>, number>({
@@ -235,10 +237,23 @@ export const notesApi = createApi({
 				url: `/notes/${noteId}/share`,
 				method: "DELETE",
 			}),
-			// 修复：删除分享链接后，失效对应笔记的分享信息缓存
 			invalidatesTags: (result, error, noteId) => [
 				{ type: "ShareLink", id: noteId },
+				{ type: "ShareLink", id: "LIST" },
+				{ type: "Note", id: noteId },
 			],
+			async onQueryStarted(noteId, { dispatch, queryFulfilled }) {
+				try {
+					await queryFulfilled;
+					dispatch(
+						notesApi.util.updateQueryData("getShareInfo", noteId, () => {
+							return undefined;
+						})
+					);
+				} catch (e) {
+					console.log(e);
+				}
+			},
 		}),
 
 		getCategories: builder.query<ApiResponse<Category[]>, void>({

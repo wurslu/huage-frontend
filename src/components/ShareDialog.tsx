@@ -1,3 +1,4 @@
+// src/components/ShareDialog.tsx - 修复删除后缓存问题
 import React, { useState, useEffect } from "react";
 import {
 	Dialog,
@@ -51,6 +52,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 	const [deleteShareLink, { isLoading: isDeleting }] =
 		useDeleteShareLinkMutation();
 
+	// 修复：在查询配置中强制重新获取数据
 	const {
 		data: shareInfoData,
 		refetch: refetchShareInfo,
@@ -58,7 +60,12 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		error: shareInfoError,
 	} = useGetShareInfoQuery(noteId || 0, {
 		skip: !noteId || !open,
+		// 修复：每次打开对话框时强制重新获取数据
 		refetchOnMountOrArgChange: true,
+		// 修复：每次获取焦点时重新获取数据
+		refetchOnFocus: true,
+		// 修复：每次重新连接时重新获取数据
+		refetchOnReconnect: true,
 	});
 
 	const [formData, setFormData] = useState({
@@ -68,14 +75,18 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		useExpiration: false,
 	});
 
+	// 修复：当对话框打开时重置表单并重新获取数据
 	useEffect(() => {
 		if (open && noteId) {
+			// 重置表单数据
 			setFormData({
 				password: "",
 				usePassword: false,
 				expireTime: "",
 				useExpiration: false,
 			});
+
+			// 强制重新获取分享信息
 			refetchShareInfo();
 		}
 	}, [open, noteId, refetchShareInfo]);
@@ -106,6 +117,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 			console.log("Share link created:", result);
 			showSuccess("分享链接创建成功！");
 
+			// 修复：创建成功后立即重新获取数据
 			await refetchShareInfo();
 		} catch (error: any) {
 			console.error("Create share link error:", error);
@@ -121,11 +133,13 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 			await deleteShareLink(noteId).unwrap();
 			showSuccess("分享链接删除成功！");
 
-			// 删除成功后，手动触发重新获取数据以清理缓存
+			// 修复：删除成功后强制重新获取数据以清理缓存
 			await refetchShareInfo();
 
-			// 然后关闭对话框
-			onClose();
+			// 修复：延迟关闭对话框，确保数据更新完成
+			setTimeout(() => {
+				onClose();
+			}, 100);
 		} catch (error: any) {
 			console.error("Delete share link error:", error);
 			const message = error.data?.message || "删除分享链接失败";
@@ -146,6 +160,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 	};
 
 	const handleClose = () => {
+		// 修复：关闭时重置表单数据
 		setFormData({
 			password: "",
 			usePassword: false,
