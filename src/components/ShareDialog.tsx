@@ -1,6 +1,3 @@
-// 测试分享功能是否完整 - 让我们检查API调用
-// src/components/ShareDialog.tsx - 改进版本
-
 import React, { useState, useEffect } from "react";
 import {
 	Dialog,
@@ -55,9 +52,15 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 	const [deleteShareLink, { isLoading: isDeleting }] =
 		useDeleteShareLinkMutation();
 
-	// 获取现有的分享信息
-	const { data: shareInfoData, refetch: refetchShareInfo } =
-		useGetShareInfoQuery(noteId || 0, { skip: !noteId || !open });
+	const {
+		data: shareInfoData,
+		refetch: refetchShareInfo,
+		isLoading: isLoadingShareInfo,
+		error: shareInfoError,
+	} = useGetShareInfoQuery(noteId || 0, {
+		skip: !noteId || !open,
+		refetchOnMountOrArgChange: true,
+	});
 
 	const [formData, setFormData] = useState({
 		password: "",
@@ -66,17 +69,17 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		useExpiration: false,
 	});
 
-	// 重置表单当对话框关闭或重新打开时
 	useEffect(() => {
-		if (open) {
+		if (open && noteId) {
 			setFormData({
 				password: "",
 				usePassword: false,
 				expireTime: "",
 				useExpiration: false,
 			});
+			refetchShareInfo();
 		}
-	}, [open]);
+	}, [open, noteId, refetchShareInfo]);
 
 	const existingShare = shareInfoData?.data;
 
@@ -104,8 +107,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 			console.log("Share link created:", result);
 			showSuccess("分享链接创建成功！");
 
-			// 重新获取分享信息
-			refetchShareInfo();
+			await refetchShareInfo();
 		} catch (error: any) {
 			console.error("Create share link error:", error);
 			const message = error.data?.message || "创建分享链接失败";
@@ -119,7 +121,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		try {
 			await deleteShareLink(noteId).unwrap();
 			showSuccess("分享链接删除成功！");
-			refetchShareInfo();
+			await refetchShareInfo();
 		} catch (error: any) {
 			console.error("Delete share link error:", error);
 			const message = error.data?.message || "删除分享链接失败";
@@ -186,8 +188,19 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 					</Box>
 				)}
 
-				{existingShare ? (
-					// 显示现有分享链接
+				{isLoadingShareInfo && (
+					<Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+						<CircularProgress />
+					</Box>
+				)}
+
+				{shareInfoError && (
+					<Alert severity="info" sx={{ mb: 3 }}>
+						当前笔记还没有分享链接，可以创建一个新的分享链接。
+					</Alert>
+				)}
+
+				{!isLoadingShareInfo && existingShare && (
 					<Box>
 						<Alert severity="success" sx={{ mb: 3 }}>
 							笔记已分享！你可以复制链接分享给他人，或删除分享链接。
@@ -278,8 +291,94 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 							</Button>
 						</Box>
 					</Box>
-				) : (
-					// 创建新分享链接的表单
+				)}
+
+				{!isLoadingShareInfo && !existingShare && !shareInfoError && (
+					<Box>
+						<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+							创建分享链接，让他人可以查看这篇笔记。你可以设置访问密码和过期时间来保护分享内容。
+						</Typography>
+
+						<Box sx={{ mb: 3 }}>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={formData.usePassword}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												usePassword: e.target.checked,
+											}))
+										}
+									/>
+								}
+								label="设置访问密码"
+							/>
+
+							{formData.usePassword && (
+								<TextField
+									fullWidth
+									label="访问密码"
+									type="password"
+									value={formData.password}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											password: e.target.value,
+										}))
+									}
+									placeholder="请输入访问密码"
+									sx={{ mt: 2 }}
+									helperText="设置密码后，访问者需要输入密码才能查看笔记"
+								/>
+							)}
+						</Box>
+
+						<Divider sx={{ my: 2 }} />
+
+						<Box>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={formData.useExpiration}
+										onChange={(e) =>
+											setFormData((prev) => ({
+												...prev,
+												useExpiration: e.target.checked,
+											}))
+										}
+									/>
+								}
+								label="设置过期时间"
+							/>
+
+							{formData.useExpiration && (
+								<TextField
+									fullWidth
+									label="过期时间"
+									type="datetime-local"
+									value={formData.expireTime}
+									onChange={(e) =>
+										setFormData((prev) => ({
+											...prev,
+											expireTime: e.target.value,
+										}))
+									}
+									sx={{ mt: 2 }}
+									helperText="链接将在指定时间后失效"
+									InputLabelProps={{
+										shrink: true,
+									}}
+									inputProps={{
+										min: new Date().toISOString().slice(0, 16),
+									}}
+								/>
+							)}
+						</Box>
+					</Box>
+				)}
+
+				{!isLoadingShareInfo && shareInfoError && (
 					<Box>
 						<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
 							创建分享链接，让他人可以查看这篇笔记。你可以设置访问密码和过期时间来保护分享内容。

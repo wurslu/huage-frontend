@@ -53,14 +53,12 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 	);
 	const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
-	// 分享相关状态
 	const [shareDialogOpen, setShareDialogOpen] = React.useState(false);
 	const [sharingNote, setSharingNote] = React.useState<{
 		id: number;
 		title: string;
 	} | null>(null);
 
-	// 附件管理相关状态
 	const [attachmentManagerOpen, setAttachmentManagerOpen] =
 		React.useState(false);
 	const [managingNoteId, setManagingNoteId] = React.useState<number | null>(
@@ -70,7 +68,8 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 
 	const [deleteNote, { isLoading: isDeleting }] = useDeleteNoteMutation();
 
-	// 构建查询参数
+	const [shareDialogKey, setShareDialogKey] = React.useState(0);
+
 	const queryParams = {
 		page: currentPage,
 		limit: 20,
@@ -104,7 +103,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 
 	const handleMenuClose = () => {
 		setAnchorEl(null);
-		// 关键修复：不在菜单关闭时清除selectedNoteId，保留给删除确认使用
 	};
 
 	const handleEdit = () => {
@@ -119,7 +117,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		handleMenuClose();
 	};
 
-	// 修复后的删除确认函数
 	const handleDeleteConfirm = async () => {
 		if (!selectedNoteId) {
 			showError("未选择要删除的笔记");
@@ -127,16 +124,14 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		}
 
 		if (isDeleting) {
-			return; // 防止重复点击
+			return;
 		}
 
 		try {
-			// 使用和NoteDetail.tsx相同的简单删除逻辑
 			await deleteNote(selectedNoteId).unwrap();
 
 			showSuccess("笔记删除成功！");
 
-			// 清理状态
 			setDeleteDialogOpen(false);
 			setSelectedNoteId(null);
 		} catch (error: any) {
@@ -175,6 +170,7 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 			const note = notes.find((n) => n.id === selectedNoteId);
 			if (note) {
 				setSharingNote({ id: note.id, title: note.title });
+				setShareDialogKey((prev) => prev + 1);
 				setShareDialogOpen(true);
 			}
 		}
@@ -221,7 +217,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		navigate(`/notes/${noteId}`);
 	};
 
-	// 获取当前要删除的笔记信息
 	const noteToDelete = selectedNoteId
 		? notes.find((note) => note.id === selectedNoteId)
 		: null;
@@ -236,7 +231,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 
 	return (
 		<Box>
-			{/* 加载状态 */}
 			{isLoading && (
 				<Stack spacing={2}>
 					{[1, 2, 3].map((index) => (
@@ -255,7 +249,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</Stack>
 			)}
 
-			{/* 笔记列表 */}
 			{!isLoading && notes.length > 0 && (
 				<Stack spacing={2}>
 					{notes.map((note) => (
@@ -272,7 +265,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 							onClick={() => handleNoteClick(note.id)}
 						>
 							<CardContent>
-								{/* 标题行 */}
 								<Box
 									sx={{
 										display: "flex",
@@ -337,7 +329,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 													</Typography>
 												</Box>
 											)}
-											{/* 附件指示器 */}
 											{note.attachments && note.attachments.length > 0 && (
 												<Box
 													sx={{
@@ -368,7 +359,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 									</IconButton>
 								</Box>
 
-								{/* 内容预览 */}
 								{note.content && (
 									<Typography
 										variant="body2"
@@ -386,7 +376,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 									</Typography>
 								)}
 
-								{/* 分类和标签 */}
 								<Box
 									sx={{
 										display: "flex",
@@ -427,7 +416,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</Stack>
 			)}
 
-			{/* 空状态 */}
 			{!isLoading && notes.length === 0 && (
 				<Box sx={{ textAlign: "center", py: 8 }}>
 					<Typography variant="h6" color="text.secondary" gutterBottom>
@@ -443,7 +431,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</Box>
 			)}
 
-			{/* 分页 */}
 			{pagination && pagination.pages > 1 && (
 				<Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
 					<Pagination
@@ -458,7 +445,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</Box>
 			)}
 
-			{/* 操作菜单 */}
 			<Menu
 				anchorEl={anchorEl}
 				open={Boolean(anchorEl)}
@@ -484,7 +470,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</MenuItem>
 			</Menu>
 
-			{/* 删除确认对话框 */}
 			<Dialog
 				open={deleteDialogOpen}
 				onClose={handleDeleteCancel}
@@ -545,8 +530,8 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				</DialogActions>
 			</Dialog>
 
-			{/* 分享对话框 */}
 			<ShareDialog
+				key={shareDialogKey}
 				open={shareDialogOpen}
 				onClose={() => {
 					setShareDialogOpen(false);
@@ -556,7 +541,6 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				noteTitle={sharingNote?.title}
 			/>
 
-			{/* 附件管理对话框 */}
 			{managingNoteId && (
 				<AttachmentManager
 					open={attachmentManagerOpen}
