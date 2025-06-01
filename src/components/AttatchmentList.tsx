@@ -6,8 +6,6 @@ import {
 	CardContent,
 	Typography,
 	IconButton,
-	Menu,
-	MenuItem,
 	Chip,
 	Avatar,
 	Stack,
@@ -24,11 +22,9 @@ import {
 import {
 	MoreVert,
 	Download,
-	Delete,
 	Image as ImageIcon,
 	InsertDriveFile,
 	Visibility,
-	OpenInNew,
 } from "@mui/icons-material";
 import { useNotification } from "../hooks/useNotification";
 
@@ -169,12 +165,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 		handleMenuClose();
 	};
 
-	// 删除文件
-	const handleDeleteClick = () => {
-		setDeleteDialogOpen(true);
-		handleMenuClose();
-	};
-
 	const handleDeleteConfirm = async () => {
 		if (selectedAttachment) {
 			try {
@@ -197,6 +187,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 				onDelete?.(selectedAttachment.id);
 			} catch (error) {
 				showError("删除失败");
+				console.log(error);
 			}
 		}
 		setDeleteDialogOpen(false);
@@ -373,7 +364,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 									<Chip
 										label={attachment.file_type.toUpperCase()}
 										size="small"
-										color={getFileTypeColor(attachment.file_type) as any}
+										color={getFileTypeColor(attachment.file_type)}
 									/>
 									<Typography variant="caption" color="text.secondary">
 										{formatFileSize(attachment.file_size)}
@@ -412,12 +403,6 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 											<Download />
 										</IconButton>
 									</Tooltip>
-									<IconButton
-										size="small"
-										onClick={(e) => handleMenuClick(e, attachment)}
-									>
-										<MoreVert />
-									</IconButton>
 								</Box>
 							)}
 						</Box>
@@ -427,132 +412,48 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 		</Stack>
 	);
 
-	if (attachments.length === 0) {
-		return (
-			<Box sx={{ textAlign: "center", py: 4 }}>
-				<InsertDriveFile
-					sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
-				/>
-				<Typography variant="h6" color="text.secondary" gutterBottom>
-					暂无附件
-				</Typography>
-				<Typography variant="body2" color="text.secondary">
-					上传文件后将在这里显示
-				</Typography>
-			</Box>
-		);
-	}
-
 	return (
 		<Box>
-			{/* 附件列表 */}
 			{viewMode === "grid" ? renderGridView() : renderListView()}
-
-			{/* 操作菜单 */}
-			<Menu
-				anchorEl={anchorEl}
-				open={Boolean(anchorEl)}
-				onClose={handleMenuClose}
-			>
-				<MenuItem onClick={handlePreview}>
-					<Visibility sx={{ mr: 1 }} />
-					{selectedAttachment?.is_image ? "预览" : "打开"}
-				</MenuItem>
-				<MenuItem onClick={handleDownload}>
-					<Download sx={{ mr: 1 }} />
-					下载
-				</MenuItem>
-				<MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-					<Delete sx={{ mr: 1 }} />
-					删除
-				</MenuItem>
-			</Menu>
-
 			{/* 删除确认对话框 */}
 			<Dialog
 				open={deleteDialogOpen}
 				onClose={handleDeleteCancel}
-				maxWidth="sm"
-				fullWidth
+				aria-labelledby="delete-dialog-title"
+				aria-describedby="delete-dialog-description"
 			>
-				<DialogTitle>确认删除附件</DialogTitle>
+				<DialogTitle id="delete-dialog-title">确认删除</DialogTitle>
 				<DialogContent>
-					{selectedAttachment && (
-						<Box>
-							<Typography gutterBottom>
-								确定要删除附件 "{selectedAttachment.original_filename}" 吗？
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								删除后将无法恢复，笔记中的相关引用也会失效。
-							</Typography>
-						</Box>
-					)}
+					<Typography id="delete-dialog-description">
+						确定要删除这个附件吗？
+					</Typography>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={handleDeleteCancel}>取消</Button>
-					<Button
-						onClick={handleDeleteConfirm}
-						color="error"
-						variant="contained"
-					>
+					<Button onClick={handleDeleteConfirm} color="error">
 						删除
 					</Button>
 				</DialogActions>
 			</Dialog>
-
-			{/* 图片预览对话框 */}
+			{/* 预览对话框 */}
 			<Dialog
 				open={previewDialogOpen}
 				onClose={() => setPreviewDialogOpen(false)}
-				maxWidth="md"
-				fullWidth
+				aria-labelledby="preview-dialog-title"
+				aria-describedby="preview-dialog-description"
 			>
-				<DialogTitle>
-					<Box
-						sx={{
-							display: "flex",
-							justifyContent: "space-between",
-							alignItems: "center",
-						}}
-					>
-						<Typography variant="h6">
-							{selectedAttachment?.original_filename}
-						</Typography>
-						<IconButton
-							onClick={() =>
-								window.open(selectedAttachment?.urls?.original, "_blank")
-							}
-						>
-							<OpenInNew />
-						</IconButton>
-					</Box>
-				</DialogTitle>
+				<DialogTitle id="preview-dialog-title">图片预览</DialogTitle>
 				<DialogContent>
 					{selectedAttachment?.is_image && (
-						<Box sx={{ textAlign: "center" }}>
-							<img
-								src={selectedAttachment.urls?.original}
-								alt={selectedAttachment.original_filename}
-								style={{
-									maxWidth: "100%",
-									maxHeight: "70vh",
-									objectFit: "contain",
-								}}
-							/>
-						</Box>
+						<img
+							src={selectedAttachment.urls?.original}
+							alt={selectedAttachment.original_filename}
+							style={{ maxWidth: "100%", maxHeight: "80vh" }}
+						/>
 					)}
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setPreviewDialogOpen(false)}>关闭</Button>
-					<Button
-						onClick={() => {
-							setPreviewDialogOpen(false);
-							handleDownload();
-						}}
-						startIcon={<Download />}
-					>
-						下载
-					</Button>
 				</DialogActions>
 			</Dialog>
 		</Box>
@@ -560,114 +461,3 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 };
 
 export default AttachmentList;
-
-// src/components/StorageUsage.tsx - 存储使用情况组件
-import React from "react";
-import {
-	Box,
-	Typography,
-	LinearProgress,
-	Card,
-	CardContent,
-	Stack,
-	Chip,
-} from "@mui/material";
-import {
-	Storage,
-	Image as ImageIcon,
-	InsertDriveFile,
-	Folder,
-} from "@mui/icons-material";
-
-interface StorageUsageProps {
-	usedSpace: number;
-	maxSpace: number;
-	fileCount: number;
-	imageCount: number;
-	documentCount: number;
-}
-
-const StorageUsage: React.FC<StorageUsageProps> = ({
-	usedSpace,
-	maxSpace,
-	fileCount,
-	imageCount,
-	documentCount,
-}) => {
-	const formatFileSize = (bytes: number): string => {
-		if (bytes === 0) return "0 B";
-		const k = 1024;
-		const sizes = ["B", "KB", "MB", "GB"];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-	};
-
-	const usagePercentage = (usedSpace / maxSpace) * 100;
-	const getUsageColor = (percentage: number) => {
-		if (percentage >= 90) return "error";
-		if (percentage >= 75) return "warning";
-		return "primary";
-	};
-
-	return (
-		<Card>
-			<CardContent>
-				<Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-					<Storage sx={{ mr: 1, color: "primary.main" }} />
-					<Typography variant="h6">存储使用情况</Typography>
-				</Box>
-
-				{/* 存储进度条 */}
-				<Box sx={{ mb: 3 }}>
-					<Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-						<Typography variant="body2" color="text.secondary">
-							已使用 {formatFileSize(usedSpace)} / {formatFileSize(maxSpace)}
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
-							{usagePercentage.toFixed(1)}%
-						</Typography>
-					</Box>
-					<LinearProgress
-						variant="determinate"
-						value={usagePercentage}
-						color={getUsageColor(usagePercentage)}
-						sx={{ height: 8, borderRadius: 4 }}
-					/>
-				</Box>
-
-				{/* 文件统计 */}
-				<Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", gap: 1 }}>
-					<Chip
-						icon={<Folder />}
-						label={`总文件 ${fileCount}`}
-						variant="outlined"
-						size="small"
-					/>
-					<Chip
-						icon={<ImageIcon />}
-						label={`图片 ${imageCount}`}
-						variant="outlined"
-						size="small"
-						color="secondary"
-					/>
-					<Chip
-						icon={<InsertDriveFile />}
-						label={`文档 ${documentCount}`}
-						variant="outlined"
-						size="small"
-						color="primary"
-					/>
-				</Stack>
-
-				{/* 存储警告 */}
-				{usagePercentage >= 90 && (
-					<Box sx={{ mt: 2 }}>
-						<Typography variant="body2" color="error.main">
-							⚠️ 存储空间不足，建议清理不需要的文件
-						</Typography>
-					</Box>
-				)}
-			</CardContent>
-		</Card>
-	);
-};
