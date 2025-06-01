@@ -1,4 +1,4 @@
-// src/pages/notes/PublicNote.tsx - 正式版本
+// src/pages/notes/PublicNote.tsx - 修复密码验证逻辑
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -55,7 +55,9 @@ const PublicNote: React.FC = () => {
 	const [showPasswordInput, setShowPasswordInput] = useState(false);
 	const [passwordError, setPasswordError] = useState<string | null>(null);
 
+	// 添加调试日志
 	useEffect(() => {
+		console.log("PublicNote mounted, code:", code);
 		if (code) {
 			fetchPublicNote();
 		} else {
@@ -78,38 +80,57 @@ const PublicNote: React.FC = () => {
 				params.append("password", password);
 			}
 
-			const apiUrl = `/api/public/notes/${code}?${params.toString()}`;
+			const apiUrl = `/api/public/notes/${code}${
+				params.toString() ? `?${params.toString()}` : ""
+			}`;
+			console.log("Fetching from:", apiUrl);
+
 			const response = await fetch(apiUrl);
+			console.log("Response status:", response.status);
 
 			if (!response.ok) {
+				console.log("Response not ok, status:", response.status);
+
 				if (response.status === 401) {
+					console.log("401 - Password required");
 					setShowPasswordInput(true);
-					setPasswordError("访问密码错误，请重新输入");
+					setPasswordError(password ? "访问密码错误，请重新输入" : null);
+					setLoading(false);
 					return;
 				} else if (response.status === 410) {
 					setError("分享链接已过期");
+					setLoading(false);
+					return;
 				} else if (response.status === 404) {
 					setError("分享链接不存在或已失效");
+					setLoading(false);
+					return;
 				} else {
 					// 尝试解析错误信息
 					try {
 						const errorData = await response.json();
+						console.log("Error data:", errorData);
 						setError(errorData.message || "加载失败");
-					} catch {
+					} catch (parseError) {
+						console.log("Failed to parse error response:", parseError);
 						setError(`加载失败 (状态码: ${response.status})`);
 					}
+					setLoading(false);
+					return;
 				}
-				return;
 			}
 
 			const data = await response.json();
+			console.log("Received data:", data);
 
 			// 检查响应格式
 			if (data.code === 200 && data.data) {
 				setNote(data.data);
 				setShowPasswordInput(false);
 				setPasswordError(null);
+				console.log("Note loaded successfully:", data.data);
 			} else {
+				console.log("Invalid data format:", data);
 				setError(data.message || "数据格式错误");
 			}
 		} catch (err) {
@@ -122,7 +143,9 @@ const PublicNote: React.FC = () => {
 
 	const handlePasswordSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+		console.log("Submitting password:", password);
 		if (password.trim()) {
+			setPasswordError(null);
 			fetchPublicNote();
 		} else {
 			setPasswordError("请输入访问密码");
@@ -369,6 +392,9 @@ const PublicNote: React.FC = () => {
 		);
 	};
 
+	// 调试渲染状态
+	console.log("Render state:", { loading, error, showPasswordInput, note });
+
 	return (
 		<Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
 			{/* 顶部导航 */}
@@ -389,6 +415,7 @@ const PublicNote: React.FC = () => {
 			</AppBar>
 
 			<Container maxWidth="md" sx={{ py: 4 }}>
+				{/* 加载状态 */}
 				{loading && (
 					<Box>
 						<Skeleton variant="text" width="60%" height={48} />
@@ -397,55 +424,56 @@ const PublicNote: React.FC = () => {
 					</Box>
 				)}
 
-				{error && !loading && (
+				{/* 密码输入状态 */}
+				{!loading && showPasswordInput && (
+					<Box sx={{ textAlign: "center", py: 4 }}>
+						<Paper sx={{ p: 3, maxWidth: 400, mx: "auto" }}>
+							<Typography variant="h6" gutterBottom>
+								<Lock sx={{ mr: 1, verticalAlign: "middle" }} />
+								需要访问密码
+							</Typography>
+							<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+								这是一个受密码保护的分享笔记，请输入正确的访问密码。
+							</Typography>
+							<Box component="form" onSubmit={handlePasswordSubmit}>
+								<TextField
+									fullWidth
+									label="访问密码"
+									type="password"
+									value={password}
+									onChange={(e) => {
+										setPassword(e.target.value);
+										if (passwordError) setPasswordError(null);
+									}}
+									error={!!passwordError}
+									helperText={passwordError}
+									margin="normal"
+									autoFocus
+								/>
+								<Button
+									type="submit"
+									fullWidth
+									variant="contained"
+									sx={{ mt: 2 }}
+								>
+									查看笔记
+								</Button>
+							</Box>
+						</Paper>
+					</Box>
+				)}
+
+				{/* 错误状态 */}
+				{!loading && !showPasswordInput && error && (
 					<Box sx={{ textAlign: "center", py: 4 }}>
 						<Alert severity="error" sx={{ mb: 3 }}>
 							{error}
 						</Alert>
-
-						{showPasswordInput && (
-							<Paper sx={{ p: 3, maxWidth: 400, mx: "auto" }}>
-								<Typography variant="h6" gutterBottom>
-									<Lock sx={{ mr: 1, verticalAlign: "middle" }} />
-									需要访问密码
-								</Typography>
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									sx={{ mb: 3 }}
-								>
-									这是一个受密码保护的分享笔记，请输入正确的访问密码。
-								</Typography>
-								<Box component="form" onSubmit={handlePasswordSubmit}>
-									<TextField
-										fullWidth
-										label="访问密码"
-										type="password"
-										value={password}
-										onChange={(e) => {
-											setPassword(e.target.value);
-											if (passwordError) setPasswordError(null);
-										}}
-										error={!!passwordError}
-										helperText={passwordError}
-										margin="normal"
-										autoFocus
-									/>
-									<Button
-										type="submit"
-										fullWidth
-										variant="contained"
-										sx={{ mt: 2 }}
-									>
-										查看笔记
-									</Button>
-								</Box>
-							</Paper>
-						)}
 					</Box>
 				)}
 
-				{note && !loading && (
+				{/* 笔记内容 */}
+				{!loading && !error && note && (
 					<Box>
 						{/* 笔记元信息 */}
 						<Paper
