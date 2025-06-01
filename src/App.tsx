@@ -1,4 +1,4 @@
-// src/App.tsx - 更新版本，添加公开分享页面路由
+// src/App.tsx - 正式版本，使用修复后的路由路径
 import React, { useEffect } from "react";
 import {
 	BrowserRouter as Router,
@@ -47,6 +47,12 @@ const AppContent: React.FC = () => {
 	return (
 		<Router>
 			<Routes>
+				{/* 公开分享页面 - 不需要认证，使用新路径避开public文件夹冲突 */}
+				<Route path="/shared/notes/:code" element={<PublicNote />} />
+
+				{/* 短分享链接路径 - 可选 */}
+				<Route path="/share/:code" element={<PublicNote />} />
+
 				{/* 公开路由 */}
 				<Route
 					path="/login"
@@ -58,9 +64,6 @@ const AppContent: React.FC = () => {
 						!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />
 					}
 				/>
-
-				{/* 公开分享页面 - 不需要认证 */}
-				<Route path="/public/notes/:code" element={<PublicNote />} />
 
 				{/* 需要认证的路由 */}
 				<Route

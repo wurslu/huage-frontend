@@ -1,6 +1,6 @@
-// src/pages/notes/PublicNote.tsx - 公开分享笔记页面
+// src/pages/notes/PublicNote.tsx - 正式版本
 import React, { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
 	Box,
 	Container,
@@ -48,16 +48,19 @@ interface PublicNote {
 
 const PublicNote: React.FC = () => {
 	const { code } = useParams<{ code: string }>();
-	const [searchParams] = useSearchParams();
 	const [note, setNote] = useState<PublicNote | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [password, setPassword] = useState("");
 	const [showPasswordInput, setShowPasswordInput] = useState(false);
+	const [passwordError, setPasswordError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (code) {
 			fetchPublicNote();
+		} else {
+			setError("无效的分享链接");
+			setLoading(false);
 		}
 	}, [code]);
 
@@ -67,6 +70,7 @@ const PublicNote: React.FC = () => {
 		try {
 			setLoading(true);
 			setError(null);
+			setPasswordError(null);
 
 			// 构建请求URL
 			const params = new URLSearchParams();
@@ -74,25 +78,40 @@ const PublicNote: React.FC = () => {
 				params.append("password", password);
 			}
 
-			const response = await fetch(
-				`/public/notes/${code}?${params.toString()}`
-			);
-			const data = await response.json();
+			const apiUrl = `/api/public/notes/${code}?${params.toString()}`;
+			const response = await fetch(apiUrl);
 
 			if (!response.ok) {
 				if (response.status === 401) {
 					setShowPasswordInput(true);
-					setError("需要输入访问密码");
+					setPasswordError("访问密码错误，请重新输入");
+					return;
 				} else if (response.status === 410) {
 					setError("分享链接已过期");
+				} else if (response.status === 404) {
+					setError("分享链接不存在或已失效");
 				} else {
-					setError(data.message || "加载失败");
+					// 尝试解析错误信息
+					try {
+						const errorData = await response.json();
+						setError(errorData.message || "加载失败");
+					} catch {
+						setError(`加载失败 (状态码: ${response.status})`);
+					}
 				}
 				return;
 			}
 
-			setNote(data.data);
-			setShowPasswordInput(false);
+			const data = await response.json();
+
+			// 检查响应格式
+			if (data.code === 200 && data.data) {
+				setNote(data.data);
+				setShowPasswordInput(false);
+				setPasswordError(null);
+			} else {
+				setError(data.message || "数据格式错误");
+			}
 		} catch (err) {
 			console.error("Fetch public note error:", err);
 			setError("网络错误，请稍后重试");
@@ -105,6 +124,8 @@ const PublicNote: React.FC = () => {
 		e.preventDefault();
 		if (password.trim()) {
 			fetchPublicNote();
+		} else {
+			setPasswordError("请输入访问密码");
 		}
 	};
 
@@ -153,6 +174,20 @@ const PublicNote: React.FC = () => {
 							margin: "16px 0",
 							color: "text.secondary",
 						},
+						"& table": {
+							width: "100%",
+							borderCollapse: "collapse",
+							margin: "16px 0",
+						},
+						"& th, & td": {
+							border: "1px solid #ddd",
+							padding: "8px",
+							textAlign: "left",
+						},
+						"& th": {
+							backgroundColor: "#f5f5f5",
+							fontWeight: "bold",
+						},
 					}}
 				/>
 			);
@@ -194,6 +229,16 @@ const PublicNote: React.FC = () => {
 							{children}
 						</Typography>
 					),
+					h4: ({ children }) => (
+						<Typography
+							variant="h6"
+							component="h4"
+							gutterBottom
+							sx={{ mt: 2, mb: 1, fontWeight: 600 }}
+						>
+							{children}
+						</Typography>
+					),
 					p: ({ children }) => (
 						<Typography
 							variant="body1"
@@ -209,9 +254,109 @@ const PublicNote: React.FC = () => {
 								borderLeft: "4px solid #1976d2",
 								paddingLeft: 2,
 								margin: "16px 0",
-								backgroundColor: "grey.50",
+								backgroundColor: "rgba(25, 118, 210, 0.04)",
 								padding: 2,
 								borderRadius: 1,
+							}}
+						>
+							{children}
+						</Box>
+					),
+					code: ({ children, className, ...props }: any) => {
+						const match = /language-(\w+)/.exec(className || "");
+						const isInline = !match;
+
+						if (isInline) {
+							return (
+								<Box
+									component="code"
+									sx={{
+										backgroundColor: "grey.100",
+										padding: "2px 6px",
+										borderRadius: "4px",
+										fontFamily: "Monaco, Consolas, 'Courier New', monospace",
+										fontSize: "0.9em",
+									}}
+									{...props}
+								>
+									{children}
+								</Box>
+							);
+						}
+						return (
+							<Box
+								component="pre"
+								sx={{
+									backgroundColor: "grey.900",
+									color: "grey.100",
+									padding: 2,
+									borderRadius: 1,
+									overflow: "auto",
+									my: 2,
+									"& code": {
+										backgroundColor: "transparent",
+										padding: 0,
+										color: "inherit",
+									},
+								}}
+							>
+								<code className={className} {...props}>
+									{children}
+								</code>
+							</Box>
+						);
+					},
+					ul: ({ children }) => (
+						<Box component="ul" sx={{ mb: 2, pl: 3 }}>
+							{children}
+						</Box>
+					),
+					ol: ({ children }) => (
+						<Box component="ol" sx={{ mb: 2, pl: 3 }}>
+							{children}
+						</Box>
+					),
+					li: ({ children }) => (
+						<Typography component="li" sx={{ mb: 0.5, lineHeight: 1.6 }}>
+							{children}
+						</Typography>
+					),
+					table: ({ children }) => (
+						<Box sx={{ overflow: "auto", mb: 2 }}>
+							<Box
+								component="table"
+								sx={{
+									width: "100%",
+									borderCollapse: "collapse",
+									border: "1px solid",
+									borderColor: "divider",
+								}}
+							>
+								{children}
+							</Box>
+						</Box>
+					),
+					th: ({ children }) => (
+						<Box
+							component="th"
+							sx={{
+								border: "1px solid",
+								borderColor: "divider",
+								padding: 1,
+								backgroundColor: "grey.100",
+								fontWeight: 600,
+							}}
+						>
+							{children}
+						</Box>
+					),
+					td: ({ children }) => (
+						<Box
+							component="td"
+							sx={{
+								border: "1px solid",
+								borderColor: "divider",
+								padding: 1,
 							}}
 						>
 							{children}
@@ -264,13 +409,25 @@ const PublicNote: React.FC = () => {
 									<Lock sx={{ mr: 1, verticalAlign: "middle" }} />
 									需要访问密码
 								</Typography>
+								<Typography
+									variant="body2"
+									color="text.secondary"
+									sx={{ mb: 3 }}
+								>
+									这是一个受密码保护的分享笔记，请输入正确的访问密码。
+								</Typography>
 								<Box component="form" onSubmit={handlePasswordSubmit}>
 									<TextField
 										fullWidth
 										label="访问密码"
 										type="password"
 										value={password}
-										onChange={(e) => setPassword(e.target.value)}
+										onChange={(e) => {
+											setPassword(e.target.value);
+											if (passwordError) setPasswordError(null);
+										}}
+										error={!!passwordError}
+										helperText={passwordError}
 										margin="normal"
 										autoFocus
 									/>
