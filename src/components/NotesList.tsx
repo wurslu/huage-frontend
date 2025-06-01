@@ -94,7 +94,7 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 
 	const handleMenuClose = () => {
 		setAnchorEl(null);
-		setSelectedNoteId(null);
+		// 关键修复：不在菜单关闭时清除selectedNoteId，保留给删除确认使用
 	};
 
 	const handleEdit = () => {
@@ -109,18 +109,49 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		handleMenuClose();
 	};
 
+	// 修复后的删除确认函数
 	const handleDeleteConfirm = async () => {
-		if (!selectedNoteId) return;
+		if (!selectedNoteId) {
+			showError("未选择要删除的笔记");
+			return;
+		}
+
+		if (isDeleting) {
+			return; // 防止重复点击
+		}
 
 		try {
+			// 使用和NoteDetail.tsx相同的简单删除逻辑
 			await deleteNote(selectedNoteId).unwrap();
+
 			showSuccess("笔记删除成功！");
+
+			// 清理状态
 			setDeleteDialogOpen(false);
 			setSelectedNoteId(null);
 		} catch (error: any) {
-			console.error("Delete note error:", error);
-			const message = error.data?.message || "删除失败";
-			showError(message);
+			let errorMessage = "删除失败";
+			if (error?.data?.message) {
+				errorMessage = error.data.message;
+			} else if (error?.message) {
+				errorMessage = error.message;
+			} else if (error?.status) {
+				switch (error.status) {
+					case 404:
+						errorMessage = "笔记不存在或已被删除";
+						break;
+					case 403:
+						errorMessage = "没有权限删除此笔记";
+						break;
+					case 500:
+						errorMessage = "服务器内部错误，请稍后重试";
+						break;
+					default:
+						errorMessage = `删除失败 (错误码: ${error.status})`;
+				}
+			}
+
+			showError(errorMessage);
 		}
 	};
 
@@ -164,25 +195,19 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 		dispatch(setCurrentPage(value));
 	};
 
-	// 处理笔记卡片点击 - 跳转到详情页面
 	const handleNoteClick = (noteId: number) => {
 		navigate(`/notes/${noteId}`);
 	};
+
+	// 获取当前要删除的笔记信息
+	const noteToDelete = selectedNoteId
+		? notes.find((note) => note.id === selectedNoteId)
+		: null;
 
 	if (error) {
 		return (
 			<Box sx={{ textAlign: "center", py: 4 }}>
 				<Typography color="error">加载笔记失败</Typography>
-				{/* 分享对话框 */}
-				<ShareDialog
-					open={shareDialogOpen}
-					onClose={() => {
-						setShareDialogOpen(false);
-						setSharingNote(null);
-					}}
-					noteId={sharingNote?.id || null}
-					noteTitle={sharingNote?.title}
-				/>
 			</Box>
 		);
 	}
@@ -412,12 +437,46 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 				maxWidth="sm"
 				fullWidth
 			>
-				<DialogTitle>确认删除</DialogTitle>
+				<DialogTitle>确认删除笔记</DialogTitle>
 				<DialogContent>
+					{noteToDelete && (
+						<Box sx={{ mb: 2 }}>
+							<Typography variant="body2" color="text.secondary" gutterBottom>
+								即将删除笔记:
+							</Typography>
+							<Typography variant="h6" gutterBottom>
+								{noteToDelete.title}
+							</Typography>
+						</Box>
+					)}
+
 					<Typography>确定要删除这篇笔记吗？删除后将无法恢复。</Typography>
+
+					<Box
+						sx={{ mt: 2, p: 2, backgroundColor: "grey.50", borderRadius: 1 }}
+					>
+						<Typography variant="body2" color="text.secondary">
+							<strong>注意：</strong>删除操作会同时删除：
+						</Typography>
+						<Typography
+							variant="body2"
+							color="text.secondary"
+							component="ul"
+							sx={{ mt: 1, pl: 2 }}
+						>
+							<li>笔记内容和所有元数据</li>
+							<li>关联的标签和分类关系</li>
+							<li>分享链接和访问记录</li>
+							<li>所有附件文件</li>
+						</Typography>
+					</Box>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={handleDeleteCancel} disabled={isDeleting}>
+					<Button
+						onClick={handleDeleteCancel}
+						disabled={isDeleting}
+						variant="outlined"
+					>
 						取消
 					</Button>
 					<Button
@@ -425,11 +484,23 @@ const NotesList: React.FC<NotesListProps> = ({ onEditNote }) => {
 						disabled={isDeleting}
 						color="error"
 						variant="contained"
+						sx={{ minWidth: 100 }}
 					>
-						{isDeleting ? "删除中..." : "删除"}
+						{isDeleting ? "删除中..." : "确认删除"}
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* 分享对话框 */}
+			<ShareDialog
+				open={shareDialogOpen}
+				onClose={() => {
+					setShareDialogOpen(false);
+					setSharingNote(null);
+				}}
+				noteId={sharingNote?.id || null}
+				noteTitle={sharingNote?.title}
+			/>
 		</Box>
 	);
 };
