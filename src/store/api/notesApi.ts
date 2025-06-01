@@ -1,4 +1,3 @@
-// src/store/api/notesApi.ts - 更新版本，添加分享相关API
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../store";
 import { Note, NotesListRequest, Category, Tag } from "@/types/notes";
@@ -10,6 +9,36 @@ import {
 	UserStorage,
 } from "@/types/auth";
 import { ApiResponse, PaginatedResponse } from "@/types/api";
+
+export interface Attachment {
+	id: number;
+	note_id: number;
+	filename: string;
+	original_filename: string;
+	file_path: string;
+	file_size: number;
+	file_type: string;
+	mime_type?: string;
+	is_image: boolean;
+	created_at: string;
+	urls?: {
+		original: string;
+		medium?: string;
+		thumbnail?: string;
+	};
+}
+
+export interface FileUploadResponse {
+	id: number;
+	filename: string;
+	original_filename: string;
+	file_size: number;
+	file_type: string;
+	is_image: boolean;
+	urls: {
+		original: string;
+	};
+}
 
 export const notesApi = createApi({
 	reducerPath: "notesApi",
@@ -23,7 +52,15 @@ export const notesApi = createApi({
 			return headers;
 		},
 	}),
-	tagTypes: ["Note", "Category", "Tag", "User", "ShareLink"],
+	tagTypes: [
+		"Note",
+		"Category",
+		"Tag",
+		"User",
+		"ShareLink",
+		"Attachment",
+		"Storage",
+	],
 	endpoints: (builder) => ({
 		login: builder.mutation<ApiResponse<AuthResponse>, LoginRequest>({
 			query: (credentials) => ({
@@ -110,10 +147,50 @@ export const notesApi = createApi({
 				url: `/notes/${id}`,
 				method: "DELETE",
 			}),
-			invalidatesTags: ["Note", "Category", "Tag"],
+			invalidatesTags: ["Note", "Category", "Tag", "Attachment"],
 		}),
 
-		// 分享相关API
+		uploadFile: builder.mutation<
+			ApiResponse<Attachment>,
+			{ noteId: number; file: File }
+		>({
+			query: ({ noteId, file }) => {
+				const formData = new FormData();
+				formData.append("file", file);
+				return {
+					url: `/notes/${noteId}/attachments`,
+					method: "POST",
+					body: formData,
+				};
+			},
+			invalidatesTags: (result, error, { noteId }) => [
+				{ type: "Note", id: noteId },
+				{ type: "Attachment", id: noteId },
+				"Storage",
+				"User",
+			],
+		}),
+
+		getAttachments: builder.query<ApiResponse<Attachment[]>, number>({
+			query: (noteId) => `/notes/${noteId}/attachments`,
+			providesTags: (result, error, noteId) => [
+				{ type: "Attachment", id: noteId },
+			],
+		}),
+
+		deleteAttachment: builder.mutation<ApiResponse<void>, number>({
+			query: (attachmentId) => ({
+				url: `/attachments/${attachmentId}`,
+				method: "DELETE",
+			}),
+			invalidatesTags: ["Note", "Attachment", "Storage", "User"],
+		}),
+
+		getUserStorage: builder.query<ApiResponse<UserStorage>, void>({
+			query: () => "/user/storage",
+			providesTags: ["Storage"],
+		}),
+
 		createShareLink: builder.mutation<
 			ApiResponse<{
 				share_code: string;
@@ -238,21 +315,30 @@ export const {
 	useLoginMutation,
 	useRegisterMutation,
 	useGetMeQuery,
+
 	useGetNotesQuery,
 	useGetUserStatsQuery,
 	useGetNoteByIdQuery,
 	useCreateNoteMutation,
 	useUpdateNoteMutation,
 	useDeleteNoteMutation,
+
+	useUploadFileMutation,
+	useGetAttachmentsQuery,
+	useDeleteAttachmentMutation,
+	useGetUserStorageQuery,
+
+	useCreateShareLinkMutation,
+	useGetShareInfoQuery,
+	useDeleteShareLinkMutation,
+
 	useGetCategoriesQuery,
 	useCreateCategoryMutation,
 	useUpdateCategoryMutation,
 	useDeleteCategoryMutation,
+
 	useGetTagsQuery,
 	useCreateTagMutation,
 	useUpdateTagMutation,
 	useDeleteTagMutation,
-	useCreateShareLinkMutation,
-	useGetShareInfoQuery,
-	useDeleteShareLinkMutation,
 } = notesApi;
