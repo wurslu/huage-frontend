@@ -1,3 +1,4 @@
+// src/components/layout/Sidebar.tsx - 修复版本
 import React, { useState } from "react";
 import {
 	Drawer,
@@ -117,6 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 							primary={category.name}
 							primaryTypographyProps={{ fontSize: "0.9rem" }}
 						/>
+						{/* 确保显示笔记数量，即使是0 */}
 						<Chip
 							label={category.note_count || 0}
 							size="small"
@@ -191,7 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 									/>
 								</ListItemIcon>
 								<ListItemText
-									primary="📄 全部笔记"
+									primary="全部笔记"
 									primaryTypographyProps={{ fontWeight: 500 }}
 								/>
 							</ListItemButton>
@@ -215,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 								color="text.secondary"
 								sx={{ fontWeight: 600 }}
 							>
-								分类
+								分类 ({categories.length})
 							</Typography>
 							<Box>
 								<IconButton
@@ -237,7 +239,21 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 						</Box>
 
 						<Collapse in={categoriesExpanded}>
-							<List dense>{renderCategories(categories)}</List>
+							<List dense>
+								{categories.length > 0 ? (
+									renderCategories(categories)
+								) : (
+									<ListItem>
+										<Typography
+											variant="body2"
+											color="text.secondary"
+											sx={{ pl: 1 }}
+										>
+											暂无分类
+										</Typography>
+									</ListItem>
+								)}
+							</List>
 						</Collapse>
 					</Box>
 
@@ -258,7 +274,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 								color="text.secondary"
 								sx={{ fontWeight: 600 }}
 							>
-								标签
+								标签 ({tags.length})
 							</Typography>
 							<Box>
 								<IconButton
@@ -281,56 +297,69 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
 
 						<Collapse in={tagsExpanded}>
 							<List dense>
-								{tags.map((tag) => (
-									<ListItem key={tag.id} disablePadding>
-										<ListItemButton
-											selected={selectedTagId === tag.id}
-											onClick={() => handleTagSelect(tag.id)}
-											sx={{
-												borderRadius: 1,
-												mx: 1,
-												"&.Mui-selected": {
-													backgroundColor: "primary.main",
-													color: "white",
-													"&:hover": {
-														backgroundColor: "primary.dark",
+								{tags.length > 0 ? (
+									tags.map((tag) => (
+										<ListItem key={tag.id} disablePadding>
+											<ListItemButton
+												selected={selectedTagId === tag.id}
+												onClick={() => handleTagSelect(tag.id)}
+												sx={{
+													borderRadius: 1,
+													mx: 1,
+													"&.Mui-selected": {
+														backgroundColor: "primary.main",
+														color: "white",
+														"&:hover": {
+															backgroundColor: "primary.dark",
+														},
 													},
-												},
-											}}
-										>
-											<ListItemIcon sx={{ minWidth: 36 }}>
-												<Box
+												}}
+											>
+												<ListItemIcon sx={{ minWidth: 36 }}>
+													<Box
+														sx={{
+															width: 12,
+															height: 12,
+															borderRadius: "50%",
+															backgroundColor: tag.color,
+														}}
+													/>
+												</ListItemIcon>
+												<ListItemText
+													primary={tag.name}
+													primaryTypographyProps={{ fontSize: "0.9rem" }}
+												/>
+												{/* 确保显示笔记数量，即使是0 */}
+												<Chip
+													label={tag.note_count || 0}
+													size="small"
 													sx={{
-														width: 12,
-														height: 12,
-														borderRadius: "50%",
-														backgroundColor: tag.color,
+														height: 20,
+														fontSize: "0.7rem",
+														backgroundColor:
+															selectedTagId === tag.id
+																? "rgba(255,255,255,0.2)"
+																: "action.hover",
+														color:
+															selectedTagId === tag.id
+																? "white"
+																: "text.secondary",
 													}}
 												/>
-											</ListItemIcon>
-											<ListItemText
-												primary={tag.name}
-												primaryTypographyProps={{ fontSize: "0.9rem" }}
-											/>
-											<Chip
-												label={tag.note_count || 0}
-												size="small"
-												sx={{
-													height: 20,
-													fontSize: "0.7rem",
-													backgroundColor:
-														selectedTagId === tag.id
-															? "rgba(255,255,255,0.2)"
-															: "action.hover",
-													color:
-														selectedTagId === tag.id
-															? "white"
-															: "text.secondary",
-												}}
-											/>
-										</ListItemButton>
+											</ListItemButton>
+										</ListItem>
+									))
+								) : (
+									<ListItem>
+										<Typography
+											variant="body2"
+											color="text.secondary"
+											sx={{ pl: 1 }}
+										>
+											暂无标签
+										</Typography>
 									</ListItem>
-								))}
+								)}
 							</List>
 						</Collapse>
 					</Box>

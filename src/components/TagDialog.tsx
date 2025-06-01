@@ -63,10 +63,10 @@ const TagDialog: React.FC<TagDialogProps> = ({ open, onClose, tagId }) => {
 	const isEditing = Boolean(tagId);
 	const isLoading = isCreating || isUpdating;
 
-	// 修复 useEffect 依赖，避免无限更新
+	// 修复无限循环问题 - 分离编辑和新建的逻辑
 	useEffect(() => {
-		if (isEditing && tagId) {
-			// 这里应该获取标签详情并填充表单
+		if (open && isEditing && tagId) {
+			// 编辑模式：查找当前标签并填充表单
 			const tag = tags.find((t) => t.id === tagId);
 			if (tag) {
 				setFormData({
@@ -74,15 +74,22 @@ const TagDialog: React.FC<TagDialogProps> = ({ open, onClose, tagId }) => {
 					color: tag.color,
 				});
 			}
-		} else if (open) {
-			// 新建模式，重置表单（只在对话框打开时重置）
+		}
+		// 清除错误
+		setErrors({});
+	}, [open, isEditing, tagId]); // 移除 tags 依赖
+
+	// 单独处理新建模式的表单重置
+	useEffect(() => {
+		if (open && !isEditing) {
+			// 新建模式：重置表单
 			setFormData({
 				name: "",
 				color: "#1976d2",
 			});
+			setErrors({});
 		}
-		setErrors({});
-	}, [isEditing, tagId, open, tags]); // 移除 tags 依赖，避免无限更新
+	}, [open, isEditing]);
 
 	const handleInputChange = (field: keyof TagFormData, value: string) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
@@ -207,7 +214,7 @@ const TagDialog: React.FC<TagDialogProps> = ({ open, onClose, tagId }) => {
 							</Typography>
 						</Box>
 
-						{/* 预设颜色选择 - 使用 flex 布局替代 Grid */}
+						{/* 预设颜色选择 */}
 						<Box
 							sx={{
 								display: "flex",
