@@ -37,6 +37,10 @@ import {
 import { useNotification } from "../hooks/useNotification";
 import FileUpload from "./FileUpload";
 import AttachmentList from "./AttatchmentList";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github.css";
 
 interface NoteEditorProps {
 	open: boolean;
@@ -492,12 +496,145 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ open, onClose, noteId }) => {
 								<Typography variant="h6" gutterBottom>
 									{formData.title || "未命名笔记"}
 								</Typography>
-								<Typography
-									variant="body2"
-									sx={{ whiteSpace: "pre-wrap", mb: 2 }}
-								>
-									{formData.content || "暂无内容..."}
-								</Typography>
+
+								{/* 渲染 Markdown 内容 */}
+								{formData.content ? (
+									formData.content_type === "markdown" ? (
+										<ReactMarkdown
+											remarkPlugins={[remarkGfm]}
+											rehypePlugins={[rehypeHighlight]}
+											components={{
+												h1: ({ children }) => (
+													<Typography
+														variant="h4"
+														component="h1"
+														gutterBottom
+														sx={{ mt: 2, fontWeight: 600 }}
+													>
+														{children}
+													</Typography>
+												),
+												h2: ({ children }) => (
+													<Typography
+														variant="h5"
+														component="h2"
+														gutterBottom
+														sx={{ mt: 2, fontWeight: 600 }}
+													>
+														{children}
+													</Typography>
+												),
+												h3: ({ children }) => (
+													<Typography
+														variant="h6"
+														component="h3"
+														gutterBottom
+														sx={{ mt: 1.5, fontWeight: 600 }}
+													>
+														{children}
+													</Typography>
+												),
+												p: ({ children }) => (
+													<Typography
+														variant="body1"
+														paragraph
+														sx={{ lineHeight: 1.6 }}
+													>
+														{children}
+													</Typography>
+												),
+												blockquote: ({ children }) => (
+													<Box
+														sx={{
+															borderLeft: "4px solid #1976d2",
+															paddingLeft: 2,
+															margin: "16px 0",
+															backgroundColor: "rgba(25, 118, 210, 0.04)",
+															padding: 2,
+															borderRadius: 1,
+														}}
+													>
+														{children}
+													</Box>
+												),
+												code: ({ children, className, ...props }: any) => {
+													const match = /language-(\w+)/.exec(className || "");
+													const isInline = !match;
+
+													if (isInline) {
+														return (
+															<Box
+																component="code"
+																sx={{
+																	backgroundColor: "#f5f5f5",
+																	padding: "2px 6px",
+																	borderRadius: "4px",
+																	fontFamily:
+																		"Monaco, Consolas, 'Courier New', monospace",
+																	fontSize: "0.9em",
+																}}
+																{...props}
+															>
+																{children}
+															</Box>
+														);
+													}
+													return (
+														<Box
+															component="pre"
+															sx={{
+																backgroundColor: "#f8f8f8",
+																padding: 2,
+																borderRadius: 1,
+																overflow: "auto",
+																my: 2,
+																border: "1px solid #e0e0e0",
+																"& code": {
+																	backgroundColor: "transparent",
+																	padding: 0,
+																},
+															}}
+														>
+															<code className={className} {...props}>
+																{children}
+															</code>
+														</Box>
+													);
+												},
+											}}
+										>
+											{formData.content}
+										</ReactMarkdown>
+									) : (
+										// HTML 内容直接渲染
+										<Box
+											dangerouslySetInnerHTML={{ __html: formData.content }}
+											sx={{
+												"& img": { maxWidth: "100%", height: "auto" },
+												"& pre": {
+													backgroundColor: "#f8f8f8",
+													padding: 2,
+													borderRadius: 1,
+													overflow: "auto",
+													border: "1px solid #e0e0e0",
+												},
+												"& code": {
+													backgroundColor: "#f5f5f5",
+													padding: "2px 4px",
+													borderRadius: "4px",
+													fontFamily: "monospace",
+												},
+											}}
+										/>
+									)
+								) : (
+									<Typography
+										color="text.secondary"
+										sx={{ fontStyle: "italic" }}
+									>
+										暂无内容...
+									</Typography>
+								)}
 
 								{isEditing && attachments.length > 0 && (
 									<>
@@ -513,6 +650,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ open, onClose, noteId }) => {
 													size="small"
 													icon={<AttachFile />}
 													variant="outlined"
+													onClick={() =>
+														window.open(attachment.urls?.original, "_blank")
+													}
+													sx={{ cursor: "pointer" }}
 												/>
 											))}
 										</Box>
