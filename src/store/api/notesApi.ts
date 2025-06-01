@@ -1,3 +1,4 @@
+// src/store/api/notesApi.ts - 更新版本，添加分享相关API
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../store";
 import { Note, NotesListRequest, Category, Tag } from "@/types/notes";
@@ -22,7 +23,7 @@ export const notesApi = createApi({
 			return headers;
 		},
 	}),
-	tagTypes: ["Note", "Category", "Tag", "User"],
+	tagTypes: ["Note", "Category", "Tag", "User", "ShareLink"],
 	endpoints: (builder) => ({
 		login: builder.mutation<ApiResponse<AuthResponse>, LoginRequest>({
 			query: (credentials) => ({
@@ -112,6 +113,7 @@ export const notesApi = createApi({
 			invalidatesTags: ["Note", "Category", "Tag"],
 		}),
 
+		// 分享相关API
 		createShareLink: builder.mutation<
 			ApiResponse<{
 				share_code: string;
@@ -130,6 +132,36 @@ export const notesApi = createApi({
 				method: "POST",
 				body: shareData,
 			}),
+			invalidatesTags: (result, error, { noteId }) => [
+				{ type: "ShareLink", id: noteId },
+				"ShareLink",
+			],
+		}),
+
+		getShareInfo: builder.query<
+			ApiResponse<{
+				share_code: string;
+				share_url: string;
+				password?: string;
+				expire_time?: string;
+			}>,
+			number
+		>({
+			query: (noteId) => `/notes/${noteId}/share`,
+			providesTags: (result, error, noteId) => [
+				{ type: "ShareLink", id: noteId },
+			],
+		}),
+
+		deleteShareLink: builder.mutation<ApiResponse<void>, number>({
+			query: (noteId) => ({
+				url: `/notes/${noteId}/share`,
+				method: "DELETE",
+			}),
+			invalidatesTags: (result, error, noteId) => [
+				{ type: "ShareLink", id: noteId },
+				"ShareLink",
+			],
 		}),
 
 		getCategories: builder.query<ApiResponse<Category[]>, void>({
@@ -221,4 +253,6 @@ export const {
 	useUpdateTagMutation,
 	useDeleteTagMutation,
 	useCreateShareLinkMutation,
+	useGetShareInfoQuery,
+	useDeleteShareLinkMutation,
 } = notesApi;

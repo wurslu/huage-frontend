@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+// 测试分享功能是否完整 - 让我们检查API调用
+// src/components/ShareDialog.tsx - 改进版本
+
+import React, { useState, useEffect } from "react";
 import {
 	Dialog,
 	DialogTitle,
@@ -15,6 +18,7 @@ import {
 	Chip,
 	Alert,
 	Divider,
+	CircularProgress,
 } from "@mui/material";
 import {
 	Close,
@@ -23,8 +27,13 @@ import {
 	Lock,
 	AccessTime,
 	Link as LinkIcon,
+	Refresh,
 } from "@mui/icons-material";
-import { useCreateShareLinkMutation } from "../store/api/notesApi";
+import {
+	useCreateShareLinkMutation,
+	useGetShareInfoQuery,
+	useDeleteShareLinkMutation,
+} from "../store/api/notesApi";
 import { useNotification } from "../hooks/useNotification";
 
 interface ShareDialogProps {
@@ -41,14 +50,14 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 	noteTitle,
 }) => {
 	const { showSuccess, showError } = useNotification();
-	const [createShareLink, { isLoading }] = useCreateShareLinkMutation();
+	const [createShareLink, { isLoading: isCreating }] =
+		useCreateShareLinkMutation();
+	const [deleteShareLink, { isLoading: isDeleting }] =
+		useDeleteShareLinkMutation();
 
-	const [shareData, setShareData] = useState<{
-		shareCode: string;
-		shareUrl: string;
-		password?: string;
-		expireTime?: string;
-	} | null>(null);
+	// 获取现有的分享信息
+	const { data: shareInfoData, refetch: refetchShareInfo } =
+		useGetShareInfoQuery(noteId || 0, { skip: !noteId || !open });
 
 	const [formData, setFormData] = useState({
 		password: "",
@@ -57,27 +66,46 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		useExpiration: false,
 	});
 
+	// 重置表单当对话框关闭或重新打开时
+	useEffect(() => {
+		if (open) {
+			setFormData({
+				password: "",
+				usePassword: false,
+				expireTime: "",
+				useExpiration: false,
+			});
+		}
+	}, [open]);
+
+	const existingShare = shareInfoData?.data;
+
 	const handleCreateShareLink = async () => {
 		if (!noteId) return;
 
 		try {
 			const requestData: any = {};
 
-			if (formData.usePassword && formData.password) {
-				requestData.password = formData.password;
+			if (formData.usePassword && formData.password.trim()) {
+				requestData.password = formData.password.trim();
 			}
 
 			if (formData.useExpiration && formData.expireTime) {
 				requestData.expire_time = new Date(formData.expireTime).toISOString();
 			}
 
+			console.log("Creating share link with data:", requestData);
+
 			const result = await createShareLink({
 				noteId,
 				...requestData,
 			}).unwrap();
 
-			setShareData(result.data);
+			console.log("Share link created:", result);
 			showSuccess("分享链接创建成功！");
+
+			// 重新获取分享信息
+			refetchShareInfo();
 		} catch (error: any) {
 			console.error("Create share link error:", error);
 			const message = error.data?.message || "创建分享链接失败";
@@ -85,10 +113,24 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 		}
 	};
 
+	const handleDeleteShareLink = async () => {
+		if (!noteId) return;
+
+		try {
+			await deleteShareLink(noteId).unwrap();
+			showSuccess("分享链接删除成功！");
+			refetchShareInfo();
+		} catch (error: any) {
+			console.error("Delete share link error:", error);
+			const message = error.data?.message || "删除分享链接失败";
+			showError(message);
+		}
+	};
+
 	const handleCopyLink = async () => {
-		if (shareData?.shareUrl) {
+		if (existingShare?.share_url) {
 			try {
-				await navigator.clipboard.writeText(shareData.shareUrl);
+				await navigator.clipboard.writeText(existingShare.share_url);
 				showSuccess("链接已复制到剪贴板！");
 			} catch (e) {
 				showError("复制失败，请手动复制链接");
@@ -98,7 +140,6 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 	};
 
 	const handleClose = () => {
-		setShareData(null);
 		setFormData({
 			password: "",
 			usePassword: false,
@@ -145,11 +186,11 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 					</Box>
 				)}
 
-				{shareData ? (
-					// 显示分享结果
+				{existingShare ? (
+					// 显示现有分享链接
 					<Box>
 						<Alert severity="success" sx={{ mb: 3 }}>
-							分享链接创建成功！请复制链接分享给他人。
+							笔记已分享！你可以复制链接分享给他人，或删除分享链接。
 						</Alert>
 
 						<Box sx={{ mb: 3 }}>
@@ -158,7 +199,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 							</Typography>
 							<TextField
 								fullWidth
-								value={shareData.shareUrl}
+								value={existingShare.share_url}
 								InputProps={{
 									readOnly: true,
 									endAdornment: (
@@ -178,20 +219,20 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 								分享码
 							</Typography>
 							<Chip
-								label={shareData.shareCode}
+								label={existingShare.share_code}
 								variant="outlined"
 								icon={<LinkIcon />}
 								sx={{ fontFamily: "monospace" }}
 							/>
 						</Box>
 
-						{shareData.password && (
+						{existingShare.password && (
 							<Box sx={{ mb: 2 }}>
 								<Typography variant="subtitle2" gutterBottom>
 									访问密码
 								</Typography>
 								<Chip
-									label={shareData.password}
+									label={existingShare.password}
 									variant="outlined"
 									icon={<Lock />}
 									color="warning"
@@ -200,22 +241,45 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 							</Box>
 						)}
 
-						{shareData.expireTime && (
+						{existingShare.expire_time && (
 							<Box sx={{ mb: 2 }}>
 								<Typography variant="subtitle2" gutterBottom>
 									过期时间
 								</Typography>
 								<Chip
-									label={formatExpireTime(shareData.expireTime)}
+									label={formatExpireTime(existingShare.expire_time)}
 									variant="outlined"
 									icon={<AccessTime />}
 									color="info"
 								/>
 							</Box>
 						)}
+
+						<Divider sx={{ my: 2 }} />
+
+						<Box sx={{ display: "flex", gap: 2 }}>
+							<Button
+								onClick={handleDeleteShareLink}
+								disabled={isDeleting}
+								color="error"
+								variant="outlined"
+								startIcon={
+									isDeleting ? <CircularProgress size={16} /> : <Close />
+								}
+							>
+								{isDeleting ? "删除中..." : "删除分享"}
+							</Button>
+							<Button
+								onClick={refetchShareInfo}
+								variant="outlined"
+								startIcon={<Refresh />}
+							>
+								刷新
+							</Button>
+						</Box>
 					</Box>
 				) : (
-					// 分享设置表单
+					// 创建新分享链接的表单
 					<Box>
 						<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
 							创建分享链接，让他人可以查看这篇笔记。你可以设置访问密码和过期时间来保护分享内容。
@@ -291,6 +355,9 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 									InputLabelProps={{
 										shrink: true,
 									}}
+									inputProps={{
+										min: new Date().toISOString().slice(0, 16),
+									}}
 								/>
 							)}
 						</Box>
@@ -300,10 +367,10 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 
 			<DialogActions sx={{ p: 3 }}>
 				<Button onClick={handleClose} variant="outlined">
-					{shareData ? "关闭" : "取消"}
+					关闭
 				</Button>
 
-				{shareData ? (
+				{existingShare ? (
 					<Button
 						onClick={handleCopyLink}
 						variant="contained"
@@ -314,11 +381,11 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
 				) : (
 					<Button
 						onClick={handleCreateShareLink}
-						disabled={isLoading}
+						disabled={isCreating}
 						variant="contained"
-						startIcon={<Share />}
+						startIcon={isCreating ? <CircularProgress size={16} /> : <Share />}
 					>
-						{isLoading ? "创建中..." : "创建分享链接"}
+						{isCreating ? "创建中..." : "创建分享链接"}
 					</Button>
 				)}
 			</DialogActions>

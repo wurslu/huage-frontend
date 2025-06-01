@@ -1,3 +1,4 @@
+// src/App.tsx - 更新版本，添加公开分享页面路由
 import React, { useEffect } from "react";
 import {
 	BrowserRouter as Router,
@@ -18,6 +19,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/dashboard/Dashboard";
 import NoteDetail from "./pages/notes/NoteDetail";
+import PublicNote from "./pages/notes/PublicNote";
 import Layout from "./components/layout/Layout";
 import NotificationContainer from "./components/ui/NotificationContainer";
 
@@ -57,6 +59,9 @@ const AppContent: React.FC = () => {
 					}
 				/>
 
+				{/* 公开分享页面 - 不需要认证 */}
+				<Route path="/public/notes/:code" element={<PublicNote />} />
+
 				{/* 需要认证的路由 */}
 				<Route
 					path="/dashboard"
@@ -81,6 +86,30 @@ const AppContent: React.FC = () => {
 				<Route
 					path="/"
 					element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />}
+				/>
+
+				{/* 404 页面 */}
+				<Route
+					path="*"
+					element={
+						<div
+							style={{
+								textAlign: "center",
+								padding: "50px",
+								minHeight: "100vh",
+								display: "flex",
+								flexDirection: "column",
+								justifyContent: "center",
+								alignItems: "center",
+							}}
+						>
+							<h1>404 - 页面未找到</h1>
+							<p>抱歉，您访问的页面不存在。</p>
+							<a href="/" style={{ color: "#1976d2", textDecoration: "none" }}>
+								返回首页
+							</a>
+						</div>
+					}
 				/>
 			</Routes>
 
