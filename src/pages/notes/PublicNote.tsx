@@ -1,4 +1,3 @@
-// src/pages/notes/PublicNote.tsx - 修复密码验证逻辑
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -55,9 +54,11 @@ const PublicNote: React.FC = () => {
 	const [showPasswordInput, setShowPasswordInput] = useState(false);
 	const [passwordError, setPasswordError] = useState<string | null>(null);
 
-	// 添加调试日志
 	useEffect(() => {
 		console.log("PublicNote mounted, code:", code);
+		console.log("Current URL:", window.location.href);
+		console.log("Current pathname:", window.location.pathname);
+
 		if (code) {
 			fetchPublicNote();
 		} else {
@@ -74,7 +75,6 @@ const PublicNote: React.FC = () => {
 			setError(null);
 			setPasswordError(null);
 
-			// 构建请求URL
 			const params = new URLSearchParams();
 			if (password) {
 				params.append("password", password);
@@ -87,6 +87,10 @@ const PublicNote: React.FC = () => {
 
 			const response = await fetch(apiUrl);
 			console.log("Response status:", response.status);
+			console.log(
+				"Response headers:",
+				Object.fromEntries(response.headers.entries())
+			);
 
 			if (!response.ok) {
 				console.log("Response not ok, status:", response.status);
@@ -106,7 +110,6 @@ const PublicNote: React.FC = () => {
 					setLoading(false);
 					return;
 				} else {
-					// 尝试解析错误信息
 					try {
 						const errorData = await response.json();
 						console.log("Error data:", errorData);
@@ -123,7 +126,6 @@ const PublicNote: React.FC = () => {
 			const data = await response.json();
 			console.log("Received data:", data);
 
-			// 检查响应格式
 			if (data.code === 200 && data.data) {
 				setNote(data.data);
 				setShowPasswordInput(false);
@@ -171,7 +173,6 @@ const PublicNote: React.FC = () => {
 		return `${(count / 1000000).toFixed(1)}M`;
 	};
 
-	// 渲染内容
 	const renderContent = (content: string, contentType: string) => {
 		if (contentType === "html") {
 			return (
@@ -216,7 +217,6 @@ const PublicNote: React.FC = () => {
 			);
 		}
 
-		// Markdown 渲染
 		return (
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
@@ -392,12 +392,10 @@ const PublicNote: React.FC = () => {
 		);
 	};
 
-	// 调试渲染状态
 	console.log("Render state:", { loading, error, showPasswordInput, note });
 
 	return (
 		<Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-			{/* 顶部导航 */}
 			<AppBar position="static" color="primary">
 				<Toolbar>
 					<Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -415,7 +413,14 @@ const PublicNote: React.FC = () => {
 			</AppBar>
 
 			<Container maxWidth="md" sx={{ py: 4 }}>
-				{/* 加载状态 */}
+				{process.env.NODE_ENV === "development" && (
+					<Paper sx={{ p: 2, mb: 2, backgroundColor: "#f0f0f0" }}>
+						<Typography variant="caption" component="div">
+							调试信息: code={code}, pathname={window.location.pathname}
+						</Typography>
+					</Paper>
+				)}
+
 				{loading && (
 					<Box>
 						<Skeleton variant="text" width="60%" height={48} />
@@ -424,7 +429,6 @@ const PublicNote: React.FC = () => {
 					</Box>
 				)}
 
-				{/* 密码输入状态 */}
 				{!loading && showPasswordInput && (
 					<Box sx={{ textAlign: "center", py: 4 }}>
 						<Paper sx={{ p: 3, maxWidth: 400, mx: "auto" }}>
@@ -463,19 +467,19 @@ const PublicNote: React.FC = () => {
 					</Box>
 				)}
 
-				{/* 错误状态 */}
 				{!loading && !showPasswordInput && error && (
 					<Box sx={{ textAlign: "center", py: 4 }}>
 						<Alert severity="error" sx={{ mb: 3 }}>
 							{error}
 						</Alert>
+						<Typography variant="body2" color="text.secondary">
+							如果问题持续存在，请检查分享链接是否正确，或联系笔记分享者。
+						</Typography>
 					</Box>
 				)}
 
-				{/* 笔记内容 */}
 				{!loading && !error && note && (
 					<Box>
-						{/* 笔记元信息 */}
 						<Paper
 							elevation={0}
 							sx={{ p: 3, mb: 3, backgroundColor: "grey.50" }}
@@ -489,7 +493,6 @@ const PublicNote: React.FC = () => {
 								{note.title}
 							</Typography>
 
-							{/* 元信息行 */}
 							<Box
 								sx={{
 									display: "flex",
@@ -524,7 +527,6 @@ const PublicNote: React.FC = () => {
 								</Box>
 							</Box>
 
-							{/* 分类和标签 */}
 							{(note.category || (note.tags && note.tags.length > 0)) && (
 								<>
 									<Divider sx={{ my: 2 }} />
@@ -536,7 +538,6 @@ const PublicNote: React.FC = () => {
 											alignItems: "center",
 										}}
 									>
-										{/* 分类 */}
 										{note.category && (
 											<Box
 												sx={{ display: "flex", alignItems: "center", gap: 1 }}
@@ -553,7 +554,6 @@ const PublicNote: React.FC = () => {
 											</Box>
 										)}
 
-										{/* 标签 */}
 										{note.tags && note.tags.length > 0 && (
 											<Box
 												sx={{
@@ -587,7 +587,6 @@ const PublicNote: React.FC = () => {
 							)}
 						</Paper>
 
-						{/* 笔记内容 */}
 						<Paper elevation={0} sx={{ p: 4, minHeight: 400 }}>
 							{note.content ? (
 								renderContent(note.content, note.content_type)
@@ -605,7 +604,6 @@ const PublicNote: React.FC = () => {
 							)}
 						</Paper>
 
-						{/* 页脚信息 */}
 						<Paper
 							elevation={0}
 							sx={{
