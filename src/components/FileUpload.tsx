@@ -18,7 +18,6 @@ import {
 	AttachFile,
 	Image as ImageIcon,
 	Delete,
-	Download,
 	InsertDriveFile,
 } from "@mui/icons-material";
 import { useNotification } from "../hooks/useNotification";
@@ -121,7 +120,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 	};
 
 	// 上传文件
-	const uploadFile = async (file: File): Promise<void> => {
+	// 上传文件
+	const uploadFile = async (file: File): Promise<Attachment> => {
 		if (!noteId) {
 			throw new Error("缺少笔记ID");
 		}
@@ -143,7 +143,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 		}
 
 		const result = await response.json();
-		return result.data;
+		return result.data; // 确保返回的是 Attachment 类型
 	};
 
 	// 处理文件选择
