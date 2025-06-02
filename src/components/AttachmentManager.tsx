@@ -1,4 +1,3 @@
-// src/components/AttachmentManager.tsx - 独立的附件管理页面
 import React, { useState } from "react";
 import {
 	Dialog,
@@ -68,7 +67,13 @@ const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 			skip: !noteId,
 		});
 
-	const { data: storageData } = useGetUserStorageQuery();
+	const { data: storageData, refetch: refetchStorage } = useGetUserStorageQuery(
+		undefined,
+		{
+			refetchOnMountOrArgChange: true,
+			refetchOnFocus: true,
+		}
+	);
 
 	const attachments = attachmentsData?.data || [];
 	const storage = storageData?.data;
@@ -88,28 +93,65 @@ const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 
 	const handleUploadSuccess = () => {
 		refetchAttachments();
+		refetchStorage();
 	};
 
-	const handleDeleteAttachment = () => {
+	const handleDeleteAttachment = (attachmentId: number) => {
 		refetchAttachments();
+		refetchStorage();
+
+		console.log(`Attachment ${attachmentId} deleted, refreshing data...`);
 	};
 
-	// 按类型分组附件
 	const imageAttachments = attachments.filter((att) => att.is_image);
 	const documentAttachments = attachments.filter((att) => !att.is_image);
 
-	// 计算存储使用率
-	const storageUsagePercent = storage
-		? (storage.used_space / storage.max_space) * 100
-		: 0;
+	const getStorageUsagePercent = (): number => {
+		if (!storage || !storage.used_space || !storage.max_space) {
+			return 0;
+		}
+		const percent = (storage.used_space / storage.max_space) * 100;
+		return Math.min(Math.max(percent, 0), 100);
+	};
 
-	const formatFileSize = (bytes: number): string => {
-		if (bytes === 0) return "0 B";
+	const storageUsagePercent = getStorageUsagePercent();
+
+	const formatFileSize = (bytes: number | undefined | null): string => {
+		if (!bytes || bytes === 0) return "0 B";
 		const k = 1024;
 		const sizes = ["B", "KB", "MB", "GB"];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 	};
+
+	const getStorageInfo = () => {
+		const defaultStorage = {
+			used_space: 0,
+			max_space: 524288000,
+			file_count: 0,
+			image_count: 0,
+			document_count: 0,
+		};
+
+		if (!storage) {
+			console.warn("Storage data not available, using defaults");
+			return defaultStorage;
+		}
+
+		return {
+			used_space: storage.used_space || 0,
+			max_space: storage.max_space || defaultStorage.max_space,
+			file_count: storage.file_count || 0,
+			image_count: storage.image_count || 0,
+			document_count: storage.document_count || 0,
+		};
+	};
+
+	const storageInfo = getStorageInfo();
+
+	console.log("Storage data:", storage);
+	console.log("Storage info:", storageInfo);
+	console.log("Usage percent:", storageUsagePercent);
 
 	return (
 		<Dialog
@@ -216,36 +258,49 @@ const AttachmentManager: React.FC<AttachmentManagerProps> = ({
 					/>
 				</TabPanel>
 
-				{/* 存储空间信息 */}
-				{storage && (
-					<Box sx={{ mt: 3 }}>
-						<Alert
-							severity={storageUsagePercent > 80 ? "warning" : "info"}
-							sx={{ mb: 2 }}
-						>
-							<Box>
-								<Typography variant="body2" gutterBottom>
-									存储空间使用情况：{formatFileSize(storage.used_space)} /{" "}
-									{formatFileSize(storage.max_space)}
-								</Typography>
-								<LinearProgress
-									variant="determinate"
-									value={storageUsagePercent}
-									sx={{ height: 6, borderRadius: 3 }}
-									color={storageUsagePercent > 80 ? "warning" : "primary"}
-								/>
-								<Typography
-									variant="caption"
-									color="text.secondary"
-									sx={{ mt: 1, display: "block" }}
-								>
-									文件总数：{storage.file_count} | 图片：{storage.image_count} |
-									文档：{storage.document_count}
-								</Typography>
-							</Box>
-						</Alert>
-					</Box>
-				)}
+				<Box sx={{ mt: 3 }}>
+					<Alert
+						severity={storageUsagePercent > 80 ? "warning" : "info"}
+						sx={{ mb: 2 }}
+					>
+						<Box>
+							<Typography variant="body2" gutterBottom>
+								存储空间使用情况：{formatFileSize(storageInfo.used_space)} /{" "}
+								{formatFileSize(storageInfo.max_space)}
+							</Typography>
+							<LinearProgress
+								variant="determinate"
+								value={storageUsagePercent}
+								sx={{ height: 6, borderRadius: 3, mb: 1 }}
+								color={storageUsagePercent > 80 ? "warning" : "primary"}
+							/>
+							<Typography
+								variant="caption"
+								color="text.secondary"
+								sx={{ mt: 1, display: "block" }}
+							>
+								使用率：{storageUsagePercent.toFixed(1)}% | 文件总数：
+								{storageInfo.file_count} | 图片：{storageInfo.image_count} |
+								文档：{storageInfo.document_count}
+							</Typography>
+						</Box>
+					</Alert>
+
+					{process.env.NODE_ENV === "development" && (
+						<Box sx={{ mt: 2 }}>
+							<Button
+								size="small"
+								variant="outlined"
+								onClick={() => {
+									console.log("Refreshing storage data...");
+									refetchStorage();
+								}}
+							>
+								刷新存储数据 (开发模式)
+							</Button>
+						</Box>
+					)}
+				</Box>
 			</DialogContent>
 
 			<DialogActions>

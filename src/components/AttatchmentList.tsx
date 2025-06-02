@@ -1,4 +1,4 @@
-// src/components/AttatchmentList.tsx - 修复版本
+// src/components/AttatchmentList.tsx - 修复授权问题
 import React, { useState } from "react";
 import {
 	Box,
@@ -25,8 +25,10 @@ import {
 	Image as ImageIcon,
 	InsertDriveFile,
 	Visibility,
+	Delete,
 } from "@mui/icons-material";
 import { useNotification } from "../hooks/useNotification";
+import { useDeleteAttachmentMutation } from "../store/api/notesApi";
 
 interface Attachment {
 	id: number;
@@ -61,6 +63,10 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 		useState<Attachment | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+
+	// 使用 RTK Query 的删除 mutation
+	const [deleteAttachmentMutation, { isLoading: isDeleting }] =
+		useDeleteAttachmentMutation();
 
 	// 格式化文件大小
 	const formatFileSize = (bytes: number): string => {
@@ -124,6 +130,19 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 		}
 	};
 
+	// 修复：构建带认证的文件URL
+	const getAuthenticatedUrl = (baseUrl: string): string => {
+		const token = localStorage.getItem("notes_token");
+		if (!token) {
+			console.error("No auth token found");
+			return baseUrl;
+		}
+
+		// 如果URL已经有查询参数，用&连接，否则用?
+		const separator = baseUrl.includes("?") ? "&" : "?";
+		return `${baseUrl}${separator}token=${encodeURIComponent(token)}`;
+	};
+
 	// 预览文件
 	const handlePreview = (attachment: Attachment) => {
 		if (attachment.is_image) {
@@ -131,23 +150,52 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 			setPreviewDialogOpen(true);
 		} else {
 			// 对于非图片文件，直接在新窗口打开
-			window.open(attachment.urls?.original, "_blank");
+			const authUrl = getAuthenticatedUrl(attachment.urls?.original || "");
+			window.open(authUrl, "_blank");
 		}
 	};
 
-	// 下载文件
-	const handleDownload = (attachment: Attachment) => {
-		// 使用下载API
-		const downloadUrl = `${attachment.urls?.original}/download`;
-		const link = document.createElement("a");
-		link.href = downloadUrl;
-		link.download = attachment.original_filename;
-		// 设置授权头
-		link.setAttribute("target", "_blank");
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		showSuccess("开始下载文件");
+	// 修复：下载文件
+	const handleDownload = async (attachment: Attachment) => {
+		try {
+			const token = localStorage.getItem("notes_token");
+			if (!token) {
+				showError("认证信息缺失，请重新登录");
+				return;
+			}
+
+			// 构建下载URL
+			const downloadUrl = `${attachment.urls?.original}/download`;
+
+			// 使用fetch下载文件，携带认证头
+			const response = await fetch(downloadUrl, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error(`下载失败: ${response.status}`);
+			}
+
+			// 获取文件blob
+			const blob = await response.blob();
+
+			// 创建下载链接
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = attachment.original_filename;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
+
+			showSuccess("文件下载开始");
+		} catch (error) {
+			console.error("Download error:", error);
+			showError("下载失败，请稍后重试");
+		}
 	};
 
 	// 删除附件
@@ -160,26 +208,18 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 		if (!selectedAttachment) return;
 
 		try {
-			const token = localStorage.getItem("notes_token");
-			const response = await fetch(
-				`/api/attachments/${selectedAttachment.id}`,
-				{
-					method: "DELETE",
-					headers: {
-						Authorization: `Bearer ${token}`,
-					},
-				}
-			);
-
-			if (!response.ok) {
-				throw new Error("删除失败");
-			}
-
+			console.log("Deleting attachment:", selectedAttachment.id);
+			await deleteAttachmentMutation(selectedAttachment.id).unwrap();
 			showSuccess("附件删除成功");
-			onDelete?.(selectedAttachment.id);
-		} catch (error) {
-			showError("删除失败");
-			console.log(error);
+
+			// 调用回调函数通知父组件
+			if (onDelete) {
+				onDelete(selectedAttachment.id);
+			}
+		} catch (error: any) {
+			console.error("Delete attachment error:", error);
+			const message = error.data?.message || "删除失败";
+			showError(message);
 		} finally {
 			setDeleteDialogOpen(false);
 			setSelectedAttachment(null);
@@ -208,7 +248,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 							{images.map((attachment) => (
 								<ImageListItem key={attachment.id}>
 									<img
-										src={attachment.urls?.original}
+										src={getAuthenticatedUrl(attachment.urls?.original || "")}
 										alt={attachment.original_filename}
 										loading="lazy"
 										style={{
@@ -242,7 +282,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 																handleDeleteClick(attachment);
 															}}
 														>
-															<MoreVert />
+															<Delete />
 														</IconButton>
 													</Tooltip>
 												</Box>
@@ -322,7 +362,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 															handleDeleteClick(attachment);
 														}}
 													>
-														<MoreVert />
+														<Delete />
 													</IconButton>
 												</Tooltip>
 											</Box>
@@ -353,7 +393,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 							{/* 文件图标或缩略图 */}
 							{attachment.is_image ? (
 								<Avatar
-									src={attachment.urls?.original}
+									src={getAuthenticatedUrl(attachment.urls?.original || "")}
 									variant="rounded"
 									sx={{ width: 40, height: 40 }}
 								>
@@ -422,6 +462,15 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 											<Download />
 										</IconButton>
 									</Tooltip>
+									<Tooltip title="删除">
+										<IconButton
+											size="small"
+											color="error"
+											onClick={() => handleDeleteClick(attachment)}
+										>
+											<Delete />
+										</IconButton>
+									</Tooltip>
 								</Box>
 							)}
 						</Box>
@@ -433,7 +482,17 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 
 	return (
 		<Box>
-			{viewMode === "grid" ? renderGridView() : renderListView()}
+			{attachments.length === 0 ? (
+				<Box sx={{ textAlign: "center", py: 4 }}>
+					<Typography variant="body2" color="text.secondary">
+						暂无附件
+					</Typography>
+				</Box>
+			) : viewMode === "grid" ? (
+				renderGridView()
+			) : (
+				renderListView()
+			)}
 
 			{/* 删除确认对话框 */}
 			<Dialog
@@ -450,9 +509,15 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 					)}
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={handleDeleteCancel}>取消</Button>
-					<Button onClick={handleDeleteConfirm} color="error">
-						删除
+					<Button onClick={handleDeleteCancel} disabled={isDeleting}>
+						取消
+					</Button>
+					<Button
+						onClick={handleDeleteConfirm}
+						color="error"
+						disabled={isDeleting}
+					>
+						{isDeleting ? "删除中..." : "删除"}
 					</Button>
 				</DialogActions>
 			</Dialog>
@@ -468,7 +533,7 @@ const AttachmentList: React.FC<AttachmentListProps> = ({
 				<DialogContent>
 					{selectedAttachment?.is_image && (
 						<img
-							src={selectedAttachment.urls?.original}
+							src={getAuthenticatedUrl(selectedAttachment.urls?.original || "")}
 							alt={selectedAttachment.original_filename}
 							style={{
 								maxWidth: "100%",

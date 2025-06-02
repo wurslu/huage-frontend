@@ -246,7 +246,7 @@ export const notesApi = createApi({
 				try {
 					await queryFulfilled;
 					dispatch(
-						notesApi.util.updateQueryData("getShareInfo", noteId, () => {
+						notesApi.util.updateQueryData("getShareInfo", noteId, (draft) => {
 							return undefined;
 						})
 					);
