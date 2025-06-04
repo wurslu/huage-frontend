@@ -43,7 +43,8 @@ export interface FileUploadResponse {
 export const notesApi = createApi({
 	reducerPath: "notesApi",
 	baseQuery: fetchBaseQuery({
-		baseUrl: "/api",
+		baseUrl: import.meta.env.VITE_API_URL || "/api",
+		// baseUrl: "https://huage.api.xiaohua.tech/api",
 		prepareHeaders: (headers, { getState }) => {
 			const token = (getState() as RootState).auth.token;
 			if (token) {
